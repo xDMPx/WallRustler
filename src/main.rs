@@ -15,10 +15,23 @@ fn main() {
             .map_or(false, |extension| is_img_file(extension))
     });
     let wallpapers: Vec<std::fs::DirEntry> = wallpapers.collect();
+
+    loop {
+        let wallpaper = pick_random_wallpaper(&wallpapers);
+        set_wallpaper(wallpaper);
+        std::thread::sleep(std::time::Duration::from_secs(15 * 60));
+    }
+}
+
+fn pick_random_wallpaper(wallpapers: &Vec<std::fs::DirEntry>) -> std::path::PathBuf {
     let wallpaper = &wallpapers[get_random_num(wallpapers.len())];
+    wallpaper.path()
+}
+
+fn set_wallpaper(wallpaper: std::path::PathBuf) {
     std::process::Command::new("swww")
         .arg("img")
-        .arg(wallpaper.path())
+        .arg(wallpaper)
         .spawn()
         .unwrap()
         .wait()

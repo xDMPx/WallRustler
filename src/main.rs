@@ -1,5 +1,10 @@
 use rand::prelude::*;
 
+struct Wallpaper {
+    path: std::path::PathBuf,
+    count: usize,
+}
+
 fn main() {
     let wallpaper_path = std::env::args()
         .last()
@@ -14,21 +19,41 @@ fn main() {
             .extension()
             .map_or(false, |extension| is_img_file(extension))
     });
-    let wallpapers: Vec<std::fs::DirEntry> = wallpapers.collect();
+    let wallpapers = wallpapers.map(|wallpaper| Wallpaper {
+        path: wallpaper.path(),
+        count: 1,
+    });
+    let mut wallpapers: Vec<Wallpaper> = wallpapers.collect();
 
     loop {
-        let wallpaper = pick_random_wallpaper(&wallpapers);
+        let wallpaper = pick_random_wallpaper(&mut wallpapers);
         set_wallpaper(wallpaper);
         std::thread::sleep(std::time::Duration::from_secs(15 * 60));
     }
 }
 
-fn pick_random_wallpaper(wallpapers: &Vec<std::fs::DirEntry>) -> std::path::PathBuf {
-    let wallpaper = &wallpapers[get_random_num(wallpapers.len())];
-    wallpaper.path()
+fn pick_random_wallpaper(wallpapers: &mut Vec<Wallpaper>) -> &std::path::Path {
+    let factor: f64 = 1.001;
+    let total_count_w: f64 = wallpapers
+        .iter()
+        .map(|wallpaper| wallpaper.count as f64)
+        .fold(0.0, |acc, count: f64| acc + factor.powf(-count));
+
+    let rand_num = get_random_num(total_count_w);
+    let mut cum_count_w: f64 = 0.0;
+    let wallpaper = wallpapers
+        .iter_mut()
+        .skip_while(|wallpaper| {
+            cum_count_w += factor.powf(-(wallpaper.count as f64));
+            cum_count_w < rand_num
+        })
+        .next()
+        .unwrap();
+    wallpaper.count += 1;
+    &wallpaper.path
 }
 
-fn set_wallpaper(wallpaper: std::path::PathBuf) {
+fn set_wallpaper(wallpaper: &std::path::Path) {
     std::process::Command::new("swww")
         .arg("img")
         .arg(wallpaper)
@@ -40,6 +65,7 @@ fn set_wallpaper(wallpaper: std::path::PathBuf) {
 
 fn is_img_file(extension: &std::ffi::OsStr) -> bool {
     match extension.to_string_lossy().to_string().as_str() {
+        "jpg" => true,
         "jpeg" => true,
         "png" => true,
         "gif" => true,
@@ -53,7 +79,7 @@ fn is_img_file(extension: &std::ffi::OsStr) -> bool {
     }
 }
 
-fn get_random_num(to: usize) -> usize {
+fn get_random_num(to: f64) -> f64 {
     let mut rng = rand_hc::Hc128Rng::from_entropy();
-    rng.gen_range(0..to)
+    rng.gen_range(0.0..to)
 }

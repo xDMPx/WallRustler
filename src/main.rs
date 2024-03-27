@@ -1,5 +1,7 @@
 use rand::prelude::*;
+use serde::{Deserialize, Serialize};
 
+#[derive(Serialize, Deserialize, Debug)]
 struct Wallpaper {
     path: std::path::PathBuf,
     count: usize,
@@ -11,23 +13,34 @@ fn main() {
         .map(|path_str| std::path::PathBuf::from(path_str))
         .unwrap();
 
-    let wallpapers = wallpaper_path.read_dir().unwrap();
-    let wallpapers = wallpapers.filter_map(|dir_entry| dir_entry.ok());
-    let wallpapers = wallpapers.filter(|dir_entry| {
-        dir_entry
-            .path()
-            .extension()
-            .map_or(false, |extension| is_img_file(extension))
-    });
-    let wallpapers = wallpapers.map(|wallpaper| Wallpaper {
-        path: wallpaper.path(),
-        count: 1,
-    });
-    let mut wallpapers: Vec<Wallpaper> = wallpapers.collect();
+    let mut wallpapers_state_path = wallpaper_path.clone();
+    wallpapers_state_path.push("state.bin");
+
+    let mut wallpapers: Vec<Wallpaper> = if let Ok(state) = std::fs::read(&wallpapers_state_path) {
+        println!("Using previous state");
+        serde_binary::from_vec(state, serde_binary::binary_stream::Endian::Little).unwrap()
+    } else {
+        let wallpapers = wallpaper_path.read_dir().unwrap();
+        let wallpapers = wallpapers.filter_map(|dir_entry| dir_entry.ok());
+        let wallpapers = wallpapers.filter(|dir_entry| {
+            dir_entry
+                .path()
+                .extension()
+                .map_or(false, |extension| is_img_file(extension))
+        });
+        let wallpapers = wallpapers.map(|wallpaper| Wallpaper {
+            path: wallpaper.path(),
+            count: 1,
+        });
+        wallpapers.collect()
+    };
 
     loop {
         let wallpaper = pick_random_wallpaper(&mut wallpapers);
         set_wallpaper(wallpaper);
+        let state =
+            serde_binary::to_vec(&wallpapers, serde_binary::binary_stream::Endian::Little).unwrap();
+        std::fs::write(&wallpapers_state_path, state).unwrap();
         std::thread::sleep(std::time::Duration::from_secs(15 * 60));
     }
 }

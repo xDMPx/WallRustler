@@ -8,6 +8,8 @@ struct Wallpaper {
 }
 
 fn main() {
+    swww_init().unwrap();
+
     let wallpaper_path = std::env::args()
         .last()
         .map(|path_str| std::path::PathBuf::from(path_str))
@@ -62,6 +64,7 @@ fn pick_random_wallpaper(wallpapers: &mut Vec<Wallpaper>) -> &std::path::Path {
         })
         .next()
         .unwrap();
+
     wallpaper.count += 1;
     &wallpaper.path
 }
@@ -95,4 +98,25 @@ fn is_img_file(extension: &std::ffi::OsStr) -> bool {
 fn get_random_num(to: f64) -> f64 {
     let mut rng = rand_hc::Hc128Rng::from_entropy();
     rng.gen_range(0.0..to)
+}
+
+fn swww_init() -> Result<(), std::io::Error> {
+    let output = std::process::Command::new("pgrep")
+        .arg("-f")
+        .arg("swww")
+        .output()?;
+
+    if !output.status.success() {
+        std::process::Command::new("swww")
+            .arg("init")
+            .spawn()
+            .map(|mut child| {
+                child
+                    .wait()
+                    .map_err(|child_error| eprintln!("{:?}", child_error))
+                    .ok()
+            })?;
+    }
+
+    Ok(())
 }

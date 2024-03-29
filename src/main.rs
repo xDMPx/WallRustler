@@ -7,22 +7,24 @@ struct Wallpaper {
     count: usize,
 }
 
+const COUNT_FACTOR: f64 = 1.001;
+
 fn main() {
     swww_init().unwrap();
 
-    let wallpaper_path = std::env::args()
+    let wallpapers_dir_path = std::env::args()
         .last()
         .map(|path_str| std::path::PathBuf::from(path_str))
         .unwrap();
 
-    let mut wallpapers_state_path = wallpaper_path.clone();
+    let mut wallpapers_state_path = wallpapers_dir_path.clone();
     wallpapers_state_path.push("state.bin");
 
     let mut wallpapers: Vec<Wallpaper> = if let Ok(state) = std::fs::read(&wallpapers_state_path) {
         println!("Using previous state");
         serde_binary::from_vec(state, serde_binary::binary_stream::Endian::Little).unwrap()
     } else {
-        let wallpapers = wallpaper_path.read_dir().unwrap();
+        let wallpapers = wallpapers_dir_path.read_dir().unwrap();
         let wallpapers = wallpapers.filter_map(|dir_entry| dir_entry.ok());
         let wallpapers = wallpapers.filter(|dir_entry| {
             dir_entry
@@ -32,12 +34,13 @@ fn main() {
         });
         let wallpapers = wallpapers.map(|wallpaper| Wallpaper {
             path: wallpaper.path(),
-            count: 1,
+            count: 0,
         });
         wallpapers.collect()
     };
 
     loop {
+        wallpapers = mean_centering_counts(wallpapers);
         let wallpaper = pick_random_wallpaper(&mut wallpapers);
         set_wallpaper(wallpaper);
         let state =
@@ -48,18 +51,17 @@ fn main() {
 }
 
 fn pick_random_wallpaper(wallpapers: &mut Vec<Wallpaper>) -> &std::path::Path {
-    let factor: f64 = 1.001;
     let total_count_w: f64 = wallpapers
         .iter()
         .map(|wallpaper| wallpaper.count as f64)
-        .fold(0.0, |acc, count: f64| acc + factor.powf(-count));
+        .fold(0.0, |acc, count: f64| acc + COUNT_FACTOR.powf(-count));
 
     let rand_num = get_random_num(total_count_w);
     let mut cum_count_w: f64 = 0.0;
     let wallpaper = wallpapers
         .iter_mut()
         .skip_while(|wallpaper| {
-            cum_count_w += factor.powf(-(wallpaper.count as f64));
+            cum_count_w += COUNT_FACTOR.powf(-(wallpaper.count as f64));
             cum_count_w < rand_num
         })
         .next()
@@ -119,4 +121,13 @@ fn swww_init() -> Result<(), std::io::Error> {
     }
 
     Ok(())
+}
+
+fn mean_centering_counts(mut wallpapers: Vec<Wallpaper>) -> Vec<Wallpaper> {
+    if let Some(min) = wallpapers.iter().map(|w| w.count).min() {
+        if min != 0 {
+            wallpapers.iter_mut().for_each(|w| w.count -= min);
+        }
+    }
+    wallpapers
 }

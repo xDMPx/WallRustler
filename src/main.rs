@@ -24,22 +24,16 @@ fn main() {
         println!("Using previous state");
         serde_binary::from_vec(state, serde_binary::binary_stream::Endian::Little).unwrap()
     } else {
-        let wallpapers = wallpapers_dir_path.read_dir().unwrap();
-        let wallpapers = wallpapers.filter_map(|dir_entry| dir_entry.ok());
-        let wallpapers = wallpapers.filter(|dir_entry| {
-            dir_entry
-                .path()
-                .extension()
-                .map_or(false, |extension| is_img_file(extension))
-        });
-        let wallpapers = wallpapers.map(|wallpaper| Wallpaper {
-            path: wallpaper.path(),
+        let wallpapers_paths = get_wallpapers_from_path(&wallpapers_dir_path);
+        let wallpapers = wallpapers_paths.iter().map(|wallpaper_path| Wallpaper {
+            path: wallpaper_path.to_path_buf(),
             count: 0,
         });
         wallpapers.collect()
     };
 
     loop {
+        wallpapers = sync_new_wallpapers(&wallpapers_dir_path, wallpapers);
         wallpapers = mean_centering_counts(wallpapers);
         let wallpaper = pick_random_wallpaper(&mut wallpapers);
         set_wallpaper(wallpaper);
@@ -130,4 +124,41 @@ fn mean_centering_counts(mut wallpapers: Vec<Wallpaper>) -> Vec<Wallpaper> {
         }
     }
     wallpapers
+}
+
+fn sync_new_wallpapers(
+    wallpaper_dir_path: &std::path::Path,
+    mut wallpapers: Vec<Wallpaper>,
+) -> Vec<Wallpaper> {
+    let wallpapers_paths = get_wallpapers_from_path(&wallpaper_dir_path);
+    let old_wallpapers_paths: Vec<&std::path::PathBuf> = wallpapers
+        .iter()
+        .map(|wallpaper_path| &wallpaper_path.path)
+        .collect();
+    let mut new_wallpapers: Vec<Wallpaper> = wallpapers_paths
+        .iter()
+        .filter(|wallpaper_path| !old_wallpapers_paths.contains(wallpaper_path))
+        .map(|wallpaper_path| Wallpaper {
+            path: wallpaper_path.to_path_buf(),
+            count: 1,
+        })
+        .collect();
+
+    wallpapers.append(&mut new_wallpapers);
+
+    wallpapers
+}
+
+fn get_wallpapers_from_path(wallpaper_dir_path: &std::path::Path) -> Vec<std::path::PathBuf> {
+    let wallpapers = wallpaper_dir_path.read_dir().unwrap();
+    let wallpapers = wallpapers.filter_map(|dir_entry| dir_entry.ok());
+    let wallpapers = wallpapers.filter(|dir_entry| {
+        dir_entry
+            .path()
+            .extension()
+            .map_or(false, |extension| is_img_file(extension))
+    });
+    let wallpapers = wallpapers.map(|dir_entry| dir_entry.path());
+
+    wallpapers.collect()
 }

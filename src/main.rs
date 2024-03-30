@@ -13,8 +13,9 @@ fn main() {
     swww_init().unwrap();
 
     let wallpapers_dir_path = std::env::args()
-        .last()
-        .map(|path_str| std::path::PathBuf::from(path_str))
+        .skip(1)
+        .map(|arg| std::path::PathBuf::from(arg))
+        .find(|path| path.is_dir())
         .unwrap();
 
     let mut wallpapers_state_path = wallpapers_dir_path.clone();
@@ -31,6 +32,32 @@ fn main() {
         });
         wallpapers.collect()
     };
+
+    if std::env::args()
+        .find(|arg| arg == "--print-state")
+        .is_some()
+    {
+        wallpapers = sync_new_wallpapers(&wallpapers_dir_path, wallpapers);
+        let states: Vec<(String, usize)> = wallpapers
+            .iter()
+            .map(|wallpaper| {
+                (
+                    wallpaper
+                        .path
+                        .file_name()
+                        .unwrap()
+                        .to_string_lossy()
+                        .to_string(),
+                    wallpaper.count,
+                )
+            })
+            .collect();
+        let max_len = states.iter().map(|(name, _)| name.len()).max().unwrap();
+        for (name, count) in states {
+            println!("{:<max_len$}: {count}", name);
+        }
+        return;
+    }
 
     loop {
         wallpapers = sync_new_wallpapers(&wallpapers_dir_path, wallpapers);

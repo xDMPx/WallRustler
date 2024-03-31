@@ -37,7 +37,7 @@ fn main() {
         .find(|arg| arg == "--print-state")
         .is_some()
     {
-        wallpapers = sync_new_wallpapers(&wallpapers_dir_path, wallpapers);
+        wallpapers = sync_wallpapers(&wallpapers_dir_path, wallpapers);
         let states: Vec<(String, usize)> = wallpapers
             .iter()
             .map(|wallpaper| {
@@ -60,7 +60,7 @@ fn main() {
     }
 
     loop {
-        wallpapers = sync_new_wallpapers(&wallpapers_dir_path, wallpapers);
+        wallpapers = sync_wallpapers(&wallpapers_dir_path, wallpapers);
         wallpapers = mean_centering_counts(wallpapers);
         let wallpaper = pick_random_wallpaper(&mut wallpapers);
         set_wallpaper(wallpaper);
@@ -153,15 +153,17 @@ fn mean_centering_counts(mut wallpapers: Vec<Wallpaper>) -> Vec<Wallpaper> {
     wallpapers
 }
 
-fn sync_new_wallpapers(
+fn sync_wallpapers(
     wallpaper_dir_path: &std::path::Path,
     mut wallpapers: Vec<Wallpaper>,
 ) -> Vec<Wallpaper> {
     let wallpapers_paths = get_wallpapers_from_path(&wallpaper_dir_path);
+
     let old_wallpapers_paths: Vec<&std::path::PathBuf> = wallpapers
         .iter()
         .map(|wallpaper_path| &wallpaper_path.path)
         .collect();
+
     let mut new_wallpapers: Vec<Wallpaper> = wallpapers_paths
         .iter()
         .filter(|wallpaper_path| !old_wallpapers_paths.contains(wallpaper_path))
@@ -170,6 +172,27 @@ fn sync_new_wallpapers(
             count: 1,
         })
         .collect();
+    new_wallpapers
+        .iter()
+        .for_each(|wallpaper| println!("Pushing {}", wallpaper.path.to_string_lossy()));
+
+    let removed_wallpapers: Vec<usize> = old_wallpapers_paths
+        .iter()
+        .filter(|wallpaper_path| !wallpapers_paths.contains(wallpaper_path))
+        .filter_map(|wallpaper_path| {
+            old_wallpapers_paths
+                .iter()
+                .position(|old_wallpapers_path| old_wallpapers_path == wallpaper_path)
+        })
+        .collect();
+
+    for wallpaper_index in removed_wallpapers {
+        println!(
+            "Poping {}",
+            wallpapers_paths[wallpaper_index].to_string_lossy()
+        );
+        wallpapers.swap_remove(wallpaper_index);
+    }
 
     wallpapers.append(&mut new_wallpapers);
 

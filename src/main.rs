@@ -10,7 +10,7 @@ struct Wallpaper {
 const COUNT_FACTOR: f64 = 1.001;
 
 fn main() {
-    swww_init().unwrap();
+    init();
 
     let wallpapers_dir_path = std::env::args()
         .skip(1)
@@ -92,9 +92,38 @@ fn pick_random_wallpaper(wallpapers: &mut Vec<Wallpaper>) -> &std::path::Path {
     &wallpaper.path
 }
 
+fn init() {
+    if is_running_under_wayland() {
+        swww_init().unwrap();
+    }
+}
+
+fn is_running_under_wayland() -> bool {
+    let wayland = std::env::var("WAYLAND_DISPLAY");
+    wayland.is_ok()
+}
+
 fn set_wallpaper(wallpaper: &std::path::Path) {
+    if is_running_under_wayland() {
+        set_wallpaper_wayland(wallpaper);
+    } else {
+        set_wallpaper_x11(wallpaper);
+    }
+}
+
+fn set_wallpaper_wayland(wallpaper: &std::path::Path) {
     std::process::Command::new("swww")
         .arg("img")
+        .arg(wallpaper)
+        .spawn()
+        .unwrap()
+        .wait()
+        .unwrap();
+}
+
+fn set_wallpaper_x11(wallpaper: &std::path::Path) {
+    std::process::Command::new("feh")
+        .arg("--bg-fill")
         .arg(wallpaper)
         .spawn()
         .unwrap()

@@ -103,6 +103,12 @@ fn is_running_under_wayland() -> bool {
     wayland.is_ok()
 }
 
+#[cfg(windows)]
+fn set_wallpaper(wallpaper: &std::path::Path) {
+    set_wallpaper_windows(wallpaper);
+}
+
+#[cfg(not(windows))]
 fn set_wallpaper(wallpaper: &std::path::Path) {
     if is_running_under_wayland() {
         set_wallpaper_wayland(wallpaper);
@@ -111,6 +117,7 @@ fn set_wallpaper(wallpaper: &std::path::Path) {
     }
 }
 
+#[cfg(not(windows))]
 fn set_wallpaper_wayland(wallpaper: &std::path::Path) {
     std::process::Command::new("swww")
         .arg("img")
@@ -121,6 +128,7 @@ fn set_wallpaper_wayland(wallpaper: &std::path::Path) {
         .unwrap();
 }
 
+#[cfg(not(windows))]
 fn set_wallpaper_x11(wallpaper: &std::path::Path) {
     std::process::Command::new("feh")
         .arg("--bg-fill")
@@ -129,6 +137,26 @@ fn set_wallpaper_x11(wallpaper: &std::path::Path) {
         .unwrap()
         .wait()
         .unwrap();
+}
+
+#[cfg(windows)]
+use core::ffi::c_void;
+#[cfg(windows)]
+use std::os::windows::ffi::OsStrExt;
+#[cfg(windows)]
+fn set_wallpaper_windows(wallpaper: &std::path::Path) {
+    let path = std::ffi::OsStr::new(wallpaper)
+        .encode_wide()
+        .chain(Some(0))
+        .collect::<Vec<u16>>();
+    unsafe {
+        windows_sys::Win32::UI::WindowsAndMessaging::SystemParametersInfoW(
+            20,
+            0,
+            path.as_ptr() as *mut c_void,
+            3,
+        );
+    }
 }
 
 fn is_img_file(extension: &std::ffi::OsStr) -> bool {

@@ -1,5 +1,6 @@
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
+use wallrustler::wallpaper::{init, set_wallpaper};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Wallpaper {
@@ -92,73 +93,6 @@ fn pick_random_wallpaper(wallpapers: &mut Vec<Wallpaper>) -> &std::path::Path {
     &wallpaper.path
 }
 
-fn init() {
-    if is_running_under_wayland() {
-        swww_init().unwrap();
-    }
-}
-
-fn is_running_under_wayland() -> bool {
-    let wayland = std::env::var("WAYLAND_DISPLAY");
-    wayland.is_ok()
-}
-
-#[cfg(windows)]
-fn set_wallpaper(wallpaper: &std::path::Path) {
-    set_wallpaper_windows(wallpaper);
-}
-
-#[cfg(not(windows))]
-fn set_wallpaper(wallpaper: &std::path::Path) {
-    if is_running_under_wayland() {
-        set_wallpaper_wayland(wallpaper);
-    } else {
-        set_wallpaper_x11(wallpaper);
-    }
-}
-
-#[cfg(not(windows))]
-fn set_wallpaper_wayland(wallpaper: &std::path::Path) {
-    std::process::Command::new("swww")
-        .arg("img")
-        .arg(wallpaper)
-        .spawn()
-        .unwrap()
-        .wait()
-        .unwrap();
-}
-
-#[cfg(not(windows))]
-fn set_wallpaper_x11(wallpaper: &std::path::Path) {
-    std::process::Command::new("feh")
-        .arg("--bg-fill")
-        .arg(wallpaper)
-        .spawn()
-        .unwrap()
-        .wait()
-        .unwrap();
-}
-
-#[cfg(windows)]
-use core::ffi::c_void;
-#[cfg(windows)]
-use std::os::windows::ffi::OsStrExt;
-#[cfg(windows)]
-fn set_wallpaper_windows(wallpaper: &std::path::Path) {
-    let path = std::ffi::OsStr::new(wallpaper)
-        .encode_wide()
-        .chain(Some(0))
-        .collect::<Vec<u16>>();
-    unsafe {
-        windows_sys::Win32::UI::WindowsAndMessaging::SystemParametersInfoW(
-            20,
-            0,
-            path.as_ptr() as *mut c_void,
-            3,
-        );
-    }
-}
-
 fn is_img_file(extension: &std::ffi::OsStr) -> bool {
     match extension.to_string_lossy().to_string().as_str() {
         "jpg" => true,
@@ -178,27 +112,6 @@ fn is_img_file(extension: &std::ffi::OsStr) -> bool {
 fn get_random_num(to: f64) -> f64 {
     let mut rng = rand_hc::Hc128Rng::from_entropy();
     rng.gen_range(0.0..to)
-}
-
-fn swww_init() -> Result<(), std::io::Error> {
-    let output = std::process::Command::new("pgrep")
-        .arg("-f")
-        .arg("swww")
-        .output()?;
-
-    if !output.status.success() {
-        std::process::Command::new("swww")
-            .arg("init")
-            .spawn()
-            .map(|mut child| {
-                child
-                    .wait()
-                    .map_err(|child_error| eprintln!("{:?}", child_error))
-                    .ok()
-            })?;
-    }
-
-    Ok(())
 }
 
 fn mean_centering_counts(mut wallpapers: Vec<Wallpaper>) -> Vec<Wallpaper> {

@@ -9,11 +9,14 @@ const COUNT_FACTOR: f64 = 1.001;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Wallpaper {
-    pub path: std::path::PathBuf,
+    pub file_name: std::ffi::OsString,
     pub count: usize,
 }
 
-pub fn pick_random_wallpaper(wallpapers: &mut Vec<Wallpaper>) -> &std::path::Path {
+pub fn pick_random_wallpaper(
+    wallpaper_dir_path: &std::path::Path,
+    wallpapers: &mut Vec<Wallpaper>,
+) -> std::path::PathBuf {
     let total_count_w: f64 = wallpapers
         .iter()
         .map(|wallpaper| wallpaper.count as f64)
@@ -31,46 +34,47 @@ pub fn pick_random_wallpaper(wallpapers: &mut Vec<Wallpaper>) -> &std::path::Pat
         .unwrap();
 
     wallpaper.count += 1;
-    &wallpaper.path
+
+    wallpaper_dir_path.join(wallpaper.file_name.clone())
 }
 
 pub fn sync_wallpapers(
     wallpaper_dir_path: &std::path::Path,
     mut wallpapers: Vec<Wallpaper>,
 ) -> Vec<Wallpaper> {
-    let wallpapers_paths = get_wallpapers_from_path(&wallpaper_dir_path);
+    let wallpapers_names = get_wallpapers_from_path(&wallpaper_dir_path);
 
-    let old_wallpapers_paths: Vec<&std::path::PathBuf> = wallpapers
+    let old_wallpapers_names: Vec<&std::ffi::OsString> = wallpapers
         .iter()
-        .map(|wallpaper_path| &wallpaper_path.path)
+        .map(|wallpaper_name| &wallpaper_name.file_name)
         .collect();
 
-    let mut new_wallpapers: Vec<Wallpaper> = wallpapers_paths
+    let mut new_wallpapers: Vec<Wallpaper> = wallpapers_names
         .iter()
-        .filter(|wallpaper_path| !old_wallpapers_paths.contains(wallpaper_path))
-        .map(|wallpaper_path| Wallpaper {
-            path: wallpaper_path.to_path_buf(),
+        .filter(|wallpaper_name| !old_wallpapers_names.contains(wallpaper_name))
+        .map(|wallpaper_name| Wallpaper {
+            file_name: wallpaper_name.clone(),
             count: 1,
         })
         .collect();
     new_wallpapers
         .iter()
-        .for_each(|wallpaper| println!("Pushing {}", wallpaper.path.to_string_lossy()));
+        .for_each(|wallpaper| println!("Pushing {}", wallpaper.file_name.to_string_lossy()));
 
-    let removed_wallpapers: Vec<usize> = old_wallpapers_paths
+    let removed_wallpapers: Vec<usize> = old_wallpapers_names
         .iter()
-        .filter(|wallpaper_path| !wallpapers_paths.contains(wallpaper_path))
-        .filter_map(|wallpaper_path| {
-            old_wallpapers_paths
+        .filter(|wallpaper_name| !wallpapers_names.contains(wallpaper_name))
+        .filter_map(|wallpaper_name| {
+            old_wallpapers_names
                 .iter()
-                .position(|old_wallpapers_path| old_wallpapers_path == wallpaper_path)
+                .position(|old_wallpapers_name| old_wallpapers_name == wallpaper_name)
         })
         .collect();
 
     for wallpaper_index in removed_wallpapers {
         println!(
             "Poping {}",
-            wallpapers_paths[wallpaper_index].to_string_lossy()
+            wallpapers_names[wallpaper_index].to_string_lossy()
         );
         wallpapers.swap_remove(wallpaper_index);
     }
@@ -89,7 +93,7 @@ pub fn mean_centering_counts(mut wallpapers: Vec<Wallpaper>) -> Vec<Wallpaper> {
     wallpapers
 }
 
-pub fn get_wallpapers_from_path(wallpaper_dir_path: &std::path::Path) -> Vec<std::path::PathBuf> {
+pub fn get_wallpapers_from_path(wallpaper_dir_path: &std::path::Path) -> Vec<std::ffi::OsString> {
     let wallpapers = wallpaper_dir_path.read_dir().unwrap();
     let wallpapers = wallpapers.filter_map(|dir_entry| dir_entry.ok());
     let wallpapers = wallpapers.filter(|dir_entry| {
@@ -98,7 +102,7 @@ pub fn get_wallpapers_from_path(wallpaper_dir_path: &std::path::Path) -> Vec<std
             .extension()
             .map_or(false, |extension| is_img_file(extension))
     });
-    let wallpapers = wallpapers.map(|dir_entry| dir_entry.path());
+    let wallpapers = wallpapers.map(|dir_entry| dir_entry.file_name());
 
     wallpapers.collect()
 }

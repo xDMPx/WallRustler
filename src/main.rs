@@ -21,10 +21,12 @@ fn main() {
         serde_binary::from_vec(state, serde_binary::binary_stream::Endian::Little).unwrap()
     } else {
         let wallpapers_paths = get_wallpapers_from_path(&wallpapers_dir_path);
-        let wallpapers = wallpapers_paths.iter().map(|wallpaper_path| Wallpaper {
-            path: wallpaper_path.to_path_buf(),
-            count: 0,
-        });
+        let wallpapers = wallpapers_paths
+            .into_iter()
+            .map(|wallpaper_path| Wallpaper {
+                file_name: wallpaper_path,
+                count: 0,
+            });
         wallpapers.collect()
     };
 
@@ -37,12 +39,7 @@ fn main() {
             .iter()
             .map(|wallpaper| {
                 (
-                    wallpaper
-                        .path
-                        .file_name()
-                        .unwrap()
-                        .to_string_lossy()
-                        .to_string(),
+                    wallpaper.file_name.to_string_lossy().to_string(),
                     wallpaper.count,
                 )
             })
@@ -57,8 +54,8 @@ fn main() {
     loop {
         wallpapers = sync_wallpapers(&wallpapers_dir_path, wallpapers);
         wallpapers = mean_centering_counts(wallpapers);
-        let wallpaper = pick_random_wallpaper(&mut wallpapers);
-        set_wallpaper(wallpaper);
+        let wallpaper = pick_random_wallpaper(&wallpapers_dir_path, &mut wallpapers);
+        set_wallpaper(&wallpaper);
         let state =
             serde_binary::to_vec(&wallpapers, serde_binary::binary_stream::Endian::Little).unwrap();
         std::fs::write(&wallpapers_state_path, state).unwrap();

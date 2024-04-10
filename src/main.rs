@@ -1,18 +1,29 @@
 use wallrustler::wallpaper::{init, set_wallpaper};
 use wallrustler::{
-    get_wallpapers_from_path, mean_centering_counts, pick_random_wallpaper, sync_wallpapers,
-    Wallpaper,
+    get_wallpapers_from_path, mean_centering_counts, pick_random_wallpaper, process_args,
+    sync_wallpapers, Error, Option, Wallpaper,
 };
 
 fn main() {
     init();
 
-    let wallpapers_dir_path = std::env::args()
-        .skip(1)
-        .map(|arg| std::path::PathBuf::from(arg))
-        .find(|path| path.is_dir())
+    let options = process_args()
+        .map_err(|err| {
+            match err {
+                Error::InvalidOption(option) => eprintln!("Provided option {option} is invalid"),
+                Error::InvalidOptionsStructure => println!("Invalid input"),
+            }
+            std::process::exit(-1);
+        })
         .unwrap();
 
+    let wallpapers_dir_path = options
+        .iter()
+        .find_map(|option| match option {
+            Option::Path(path) => Some(path),
+            _ => None,
+        })
+        .unwrap();
     let mut wallpapers_state_path = wallpapers_dir_path.clone();
     wallpapers_state_path.push("state.bin");
 
@@ -30,10 +41,7 @@ fn main() {
         wallpapers.collect()
     };
 
-    if std::env::args()
-        .find(|arg| arg == "--print-state")
-        .is_some()
-    {
+    if options.contains(&Option::PrintState) {
         wallpapers = sync_wallpapers(&wallpapers_dir_path, wallpapers);
         let states: Vec<(String, usize)> = wallpapers
             .iter()

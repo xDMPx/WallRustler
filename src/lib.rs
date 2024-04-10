@@ -13,6 +13,40 @@ pub struct Wallpaper {
     pub count: usize,
 }
 
+#[derive(Debug, PartialEq)]
+pub enum Option {
+    Path(std::path::PathBuf),
+    PrintState,
+}
+
+#[derive(Debug)]
+pub enum Error {
+    InvalidOption(String),
+    InvalidOptionsStructure,
+}
+
+pub fn process_args() -> Result<Vec<Option>, Error> {
+    let mut options = vec![];
+    let mut args = std::env::args().skip(1).rev();
+    if let Some(wallpapers_dir_path) = args.next() {
+        let wallpapers_dir_path = std::path::PathBuf::from(wallpapers_dir_path);
+        if !wallpapers_dir_path.is_dir() {
+            return Err(Error::InvalidOptionsStructure);
+        }
+        options.push(Option::Path(wallpapers_dir_path));
+        for arg in args {
+            let arg = match arg.as_str() {
+                "--print-state" => Ok(Option::PrintState),
+                _ => Err(Error::InvalidOption(arg)),
+            };
+            options.push(arg?);
+        }
+        return Ok(options);
+    } else {
+        return Err(Error::InvalidOptionsStructure);
+    }
+}
+
 pub fn pick_random_wallpaper(
     wallpaper_dir_path: &std::path::Path,
     wallpapers: &mut Vec<Wallpaper>,

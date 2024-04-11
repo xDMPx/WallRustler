@@ -17,6 +17,7 @@ pub struct Wallpaper {
 pub enum Option {
     Path(std::path::PathBuf),
     PrintState,
+    PrintHelp,
 }
 
 #[derive(Debug)]
@@ -37,6 +38,7 @@ pub fn process_args() -> Result<Vec<Option>, Error> {
         for arg in args {
             let arg = match arg.as_str() {
                 "--print-state" => Ok(Option::PrintState),
+                "--help" => Ok(Option::PrintState),
                 _ => Err(Error::InvalidOption(arg)),
             };
             options.push(arg?);
@@ -45,6 +47,13 @@ pub fn process_args() -> Result<Vec<Option>, Error> {
     } else {
         return Err(Error::InvalidOptionsStructure);
     }
+}
+
+pub fn print_help() {
+    println!("Usage: {} [OPTIONS] DIRECTORY", env!("CARGO_PKG_NAME"));
+    println!("       {} --print-state DIRECTORY", env!("CARGO_PKG_NAME"));
+    println!("Options:");
+    println!("\t --help");
 }
 
 pub fn pick_random_wallpaper(

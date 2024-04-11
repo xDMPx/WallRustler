@@ -1,7 +1,7 @@
 use wallrustler::wallpaper::{init, set_wallpaper};
 use wallrustler::{
-    get_wallpapers_from_path, mean_centering_counts, pick_random_wallpaper, process_args,
-    sync_wallpapers, Error, Option, Wallpaper,
+    get_wallpapers_from_path, mean_centering_counts, pick_random_wallpaper, print_help,
+    process_args, sync_wallpapers, Error, Option, Wallpaper,
 };
 
 fn main() {
@@ -11,11 +11,16 @@ fn main() {
         .map_err(|err| {
             match err {
                 Error::InvalidOption(option) => eprintln!("Provided option {option} is invalid"),
-                Error::InvalidOptionsStructure => println!("Invalid input"),
+                Error::InvalidOptionsStructure => eprintln!("Invalid input"),
             }
+            print_help();
             std::process::exit(-1);
         })
         .unwrap();
+    if options.contains(&Option::PrintHelp) {
+        print_help();
+        std::process::exit(-1);
+    }
 
     let wallpapers_dir_path = options
         .iter()

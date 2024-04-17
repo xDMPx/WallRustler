@@ -9,7 +9,7 @@ const COUNT_FACTOR: f64 = 1.001;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Wallpaper {
-    pub file_name: std::ffi::OsString,
+    pub file_name: String,
     pub count: usize,
 }
 
@@ -87,7 +87,7 @@ pub fn sync_wallpapers(
 ) -> Vec<Wallpaper> {
     let wallpapers_names = get_wallpapers_from_path(&wallpaper_dir_path);
 
-    let old_wallpapers_names: Vec<&std::ffi::OsString> = wallpapers
+    let old_wallpapers_names: Vec<&String> = wallpapers
         .iter()
         .map(|wallpaper_name| &wallpaper_name.file_name)
         .collect();
@@ -102,7 +102,7 @@ pub fn sync_wallpapers(
         .collect();
     new_wallpapers
         .iter()
-        .for_each(|wallpaper| println!("Pushing {}", wallpaper.file_name.to_string_lossy()));
+        .for_each(|wallpaper| println!("Pushing {}", wallpaper.file_name));
 
     let removed_wallpapers: Vec<usize> = old_wallpapers_names
         .iter()
@@ -115,10 +115,7 @@ pub fn sync_wallpapers(
         .collect();
 
     for wallpaper_index in removed_wallpapers {
-        println!(
-            "Poping {}",
-            wallpapers_names[wallpaper_index].to_string_lossy()
-        );
+        println!("Poping {}", wallpapers_names[wallpaper_index]);
         wallpapers.swap_remove(wallpaper_index);
     }
 
@@ -136,7 +133,7 @@ pub fn mean_centering_counts(mut wallpapers: Vec<Wallpaper>) -> Vec<Wallpaper> {
     wallpapers
 }
 
-pub fn get_wallpapers_from_path(wallpaper_dir_path: &std::path::Path) -> Vec<std::ffi::OsString> {
+pub fn get_wallpapers_from_path(wallpaper_dir_path: &std::path::Path) -> Vec<String> {
     let wallpapers = wallpaper_dir_path.read_dir().unwrap();
     let wallpapers = wallpapers.filter_map(|dir_entry| dir_entry.ok());
     let wallpapers = wallpapers.filter(|dir_entry| {
@@ -145,7 +142,12 @@ pub fn get_wallpapers_from_path(wallpaper_dir_path: &std::path::Path) -> Vec<std
             .extension()
             .map_or(false, |extension| is_img_file(extension))
     });
-    let wallpapers = wallpapers.map(|dir_entry| dir_entry.file_name());
+    let wallpapers = wallpapers.map(|dir_entry| {
+        dir_entry
+            .file_name()
+            .into_string()
+            .expect(&format!("Invalid Unicode file name: {:?}", dir_entry))
+    });
 
     wallpapers.collect()
 }

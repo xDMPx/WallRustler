@@ -50,12 +50,7 @@ fn main() {
         wallpapers = sync_wallpapers(&wallpapers_dir_path, wallpapers);
         let states: Vec<(String, usize)> = wallpapers
             .iter()
-            .map(|wallpaper| {
-                (
-                    wallpaper.file_name.to_string_lossy().to_string(),
-                    wallpaper.count,
-                )
-            })
+            .map(|wallpaper| (wallpaper.file_name.to_owned(), wallpaper.count))
             .collect();
         let max_len = states.iter().map(|(name, _)| name.len()).max().unwrap();
         for (name, count) in states {

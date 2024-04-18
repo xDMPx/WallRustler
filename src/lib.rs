@@ -97,26 +97,27 @@ pub fn sync_wallpapers(
         .filter(|wallpaper_name| !old_wallpapers_names.contains(wallpaper_name))
         .map(|wallpaper_name| Wallpaper {
             file_name: wallpaper_name.clone(),
-            count: 1,
+            count: 0,
         })
         .collect();
     new_wallpapers
         .iter()
         .for_each(|wallpaper| println!("Pushing {}", wallpaper.file_name));
 
-    let removed_wallpapers: Vec<usize> = old_wallpapers_names
+    let removed_wallpapers_names: Vec<String> = old_wallpapers_names
         .iter()
         .filter(|wallpaper_name| !wallpapers_names.contains(wallpaper_name))
-        .filter_map(|wallpaper_name| {
-            old_wallpapers_names
-                .iter()
-                .position(|old_wallpapers_name| old_wallpapers_name == wallpaper_name)
-        })
+        .map(|wallpaper_name| wallpaper_name.to_string())
         .collect();
 
-    for wallpaper_index in removed_wallpapers {
-        println!("Poping {}", wallpapers_names[wallpaper_index]);
-        wallpapers.swap_remove(wallpaper_index);
+    for to_remove in removed_wallpapers_names {
+        if let Some(to_remove_index) = wallpapers
+            .iter()
+            .position(|wallpaper| wallpaper.file_name == to_remove)
+        {
+            println!("Popping {}", to_remove);
+            wallpapers.swap_remove(to_remove_index);
+        }
     }
 
     wallpapers.append(&mut new_wallpapers);

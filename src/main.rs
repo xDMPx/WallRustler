@@ -1,11 +1,17 @@
-use wallrustler::wallpaper::{init, set_wallpaper};
+use wallrustler::wallpaper::{init, is_running, kill, set_wallpaper};
 use wallrustler::{
     get_wallpapers_from_path, mean_centering_counts, pick_random_wallpaper, print_help,
     process_args, sync_wallpapers, Error, Option, Wallpaper,
 };
 
 fn main() {
-    init();
+    if !is_running() {
+        init();
+    } else {
+        println!("Killing already running instance");
+        kill().unwrap();
+        init();
+    }
 
     let options = process_args()
         .map_err(|err| {

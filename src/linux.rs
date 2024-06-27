@@ -38,7 +38,7 @@ pub fn kill() -> Result<(), std::io::Error> {
         eprintln!("{:?}", output.stderr);
         return Err(std::io::Error::new(
             std::io::ErrorKind::Other,
-            format!("{:?}", output.stderr),
+            format!("{:?}", output),
         ));
     }
 

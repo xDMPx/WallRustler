@@ -7,14 +7,87 @@ pub fn set_wallpaper(wallpaper: &std::path::Path) {
     set_wallpaper_windows(wallpaper);
 }
 
-fn is_running() -> bool {
-    eprintln!("is_running unimplemented");
-    false
+pub fn is_running() -> bool {
+    let output = std::process::Command::new("tasklist")
+        .arg("/fo")
+        .arg("csv")
+        .arg("/nh")
+        .arg("/fi")
+        .arg(format!("IMAGENAME eq {}.exe", env!("CARGO_PKG_NAME")))
+        .output();
+
+    output
+        .map(|output| {
+            output.status.success()
+                && std::string::String::from_utf8_lossy(&output.stdout)
+                    .to_string()
+                    .lines()
+                    .count()
+                    > 1
+        })
+        .unwrap_or(false)
 }
 
 pub fn kill() -> Result<(), std::io::Error> {
-    eprintln!("kill unimplemented");
+    let pid = get_running_pid()?;
+    let output = std::process::Command::new("taskkill")
+        .arg("/f")
+        .arg("/t")
+        .arg("/PID")
+        .arg(pid.to_string())
+        .output()?;
+
+    if !output.status.success() {
+        eprintln!("{:?}", output.stderr);
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!("{:?}", output),
+        ));
+    }
+
     Ok(())
+}
+
+fn get_running_pid() -> Result<usize, std::io::Error> {
+    let output = std::process::Command::new("tasklist")
+        .arg("/fo")
+        .arg("csv")
+        .arg("/nh")
+        .arg("/fi")
+        .arg(format!("IMAGENAME eq {}.exe", env!("CARGO_PKG_NAME")))
+        .output()?;
+
+    let pid: String;
+    let out = std::string::String::from_utf8_lossy(&output.stdout);
+    pid = out
+        .lines()
+        .next()
+        .map(|line| {
+            line.split_once("\",\"")
+                .map(|split| split.1)
+                .unwrap_or("")
+                .split_once("\"")
+                .map(|split| split.0)
+                .unwrap_or("")
+        })
+        .unwrap_or("")
+        .to_string();
+
+    if pid.is_empty() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!("tasklist invalid out: {}", out),
+        ));
+    }
+
+    if let Ok(pid) = pid.parse() {
+        Ok(pid)
+    } else {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!("tasklist invalid pid: {}", pid),
+        ));
+    }
 }
 
 fn set_wallpaper_windows(wallpaper: &std::path::Path) {

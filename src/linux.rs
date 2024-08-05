@@ -42,6 +42,19 @@ pub fn kill() -> Result<(), std::io::Error> {
         ));
     }
 
+    let output = std::process::Command::new("pkill")
+        .arg("-o")
+        .arg("swww-daemon")
+        .output()?;
+
+    if !output.status.success() {
+        eprintln!("{:?}", output.stderr);
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!("{:?}", output),
+        ));
+    }
+
     Ok(())
 }
 
@@ -52,16 +65,16 @@ fn swww_init() -> Result<(), std::io::Error> {
         .output()?;
 
     if !output.status.success() {
-        std::process::Command::new("swww")
-            .arg("init")
+        std::process::Command::new("swww-daemon")
             .spawn()
             .map(|mut child| {
                 child
-                    .wait()
+                    .try_wait()
                     .map_err(|child_error| eprintln!("{:?}", child_error))
                     .ok()
             })?;
     }
+    std::thread::sleep(std::time::Duration::from_secs(1));
 
     Ok(())
 }

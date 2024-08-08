@@ -7,6 +7,9 @@ pub fn init() {
 pub fn set_wallpaper(wallpaper: &std::path::Path) -> Result<(), std::io::Error> {
     if is_running_under_wayland() {
         set_wallpaper_wayland(wallpaper)?;
+        std::thread::sleep(std::time::Duration::from_secs(10));
+        kill_swww_daemon()?;
+        swww_daemon_init()?;
     } else {
         set_wallpaper_x11(wallpaper)?;
     }
@@ -44,6 +47,12 @@ pub fn kill() -> Result<(), std::io::Error> {
         ));
     }
 
+    kill_swww_daemon()?;
+
+    Ok(())
+}
+
+fn kill_swww_daemon() -> Result<(), std::io::Error> {
     let output = std::process::Command::new("pkill")
         .arg("-o")
         .arg("swww-daemon")
@@ -67,16 +76,22 @@ fn swww_init() -> Result<(), std::io::Error> {
         .output()?;
 
     if !output.status.success() {
-        std::process::Command::new("swww-daemon")
-            .spawn()
-            .map(|mut child| {
-                child
-                    .try_wait()
-                    .map_err(|child_error| eprintln!("{:?}", child_error))
-                    .ok()
-            })?;
+        swww_daemon_init()?;
     }
-    std::thread::sleep(std::time::Duration::from_secs(1));
+
+    Ok(())
+}
+
+fn swww_daemon_init() -> Result<(), std::io::Error> {
+    std::process::Command::new("swww-daemon")
+        .spawn()
+        .map(|mut child| {
+            child
+                .try_wait()
+                .map_err(|child_error| eprintln!("{:?}", child_error))
+                .ok()
+        })?;
+    std::thread::sleep(std::time::Duration::from_secs(2));
 
     Ok(())
 }

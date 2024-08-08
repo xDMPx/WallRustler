@@ -3,8 +3,8 @@ use std::os::windows::ffi::OsStrExt;
 
 pub fn init() {}
 
-pub fn set_wallpaper(wallpaper: &std::path::Path) {
-    set_wallpaper_windows(wallpaper);
+pub fn set_wallpaper(wallpaper: &std::path::Path) -> Result<(), std::io::Error> {
+    set_wallpaper_windows(wallpaper)
 }
 
 pub fn is_running() -> bool {

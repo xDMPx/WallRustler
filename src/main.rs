@@ -1,3 +1,5 @@
+#![windows_subsystem = "windows"]
+
 use wallrustler::wallpaper::{init, is_running, kill, set_wallpaper};
 use wallrustler::{
     get_wallpapers_from_path, mean_centering_counts, pick_random_wallpaper, print_help,

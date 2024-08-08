@@ -90,11 +90,12 @@ fn get_running_pid() -> Result<usize, std::io::Error> {
     }
 }
 
-fn set_wallpaper_windows(wallpaper: &std::path::Path) {
+fn set_wallpaper_windows(wallpaper: &std::path::Path) -> Result<(), std::io::Error> {
     let path = std::ffi::OsStr::new(wallpaper)
         .encode_wide()
         .chain(Some(0))
         .collect::<Vec<u16>>();
+
     unsafe {
         windows_sys::Win32::UI::WindowsAndMessaging::SystemParametersInfoW(
             20,
@@ -103,4 +104,6 @@ fn set_wallpaper_windows(wallpaper: &std::path::Path) {
             3,
         );
     }
+
+    Ok(())
 }

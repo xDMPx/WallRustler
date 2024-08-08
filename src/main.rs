@@ -69,7 +69,7 @@ fn main() {
         wallpapers = sync_wallpapers(&wallpapers_dir_path, wallpapers);
         wallpapers = mean_centering_counts(wallpapers);
         let wallpaper = pick_random_wallpaper(&wallpapers_dir_path, &mut wallpapers);
-        set_wallpaper(&wallpaper);
+        set_wallpaper(&wallpaper).unwrap();
         let state =
             serde_binary::to_vec(&wallpapers, serde_binary::binary_stream::Endian::Little).unwrap();
         std::fs::write(&wallpapers_state_path, state).unwrap();

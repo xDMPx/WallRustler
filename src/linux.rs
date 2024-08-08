@@ -4,12 +4,14 @@ pub fn init() {
     }
 }
 
-pub fn set_wallpaper(wallpaper: &std::path::Path) {
+pub fn set_wallpaper(wallpaper: &std::path::Path) -> Result<(), std::io::Error> {
     if is_running_under_wayland() {
-        set_wallpaper_wayland(wallpaper);
+        set_wallpaper_wayland(wallpaper)?;
     } else {
-        set_wallpaper_x11(wallpaper);
+        set_wallpaper_x11(wallpaper)?;
     }
+
+    Ok(())
 }
 
 pub fn is_running() -> bool {
@@ -84,22 +86,22 @@ fn is_running_under_wayland() -> bool {
     wayland.is_ok()
 }
 
-fn set_wallpaper_wayland(wallpaper: &std::path::Path) {
+fn set_wallpaper_wayland(wallpaper: &std::path::Path) -> Result<(), std::io::Error> {
     std::process::Command::new("swww")
         .arg("img")
         .arg(wallpaper)
-        .spawn()
-        .unwrap()
-        .wait()
-        .unwrap();
+        .spawn()?
+        .wait()?;
+
+    Ok(())
 }
 
-fn set_wallpaper_x11(wallpaper: &std::path::Path) {
+fn set_wallpaper_x11(wallpaper: &std::path::Path) -> Result<(), std::io::Error> {
     std::process::Command::new("feh")
         .arg("--bg-fill")
         .arg(wallpaper)
-        .spawn()
-        .unwrap()
-        .wait()
-        .unwrap();
+        .spawn()?
+        .wait()?;
+
+    Ok(())
 }

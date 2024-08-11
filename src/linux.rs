@@ -1,122 +1,123 @@
-pub fn init() {
-    if is_running_under_wayland() {
-        swww_init().unwrap();
-    }
-}
+pub struct WallSetter {}
 
-pub fn set_wallpaper(wallpaper: &std::path::Path) -> Result<(), std::io::Error> {
-    if is_running_under_wayland() {
-        set_wallpaper_wayland(wallpaper)?;
-        std::thread::sleep(std::time::Duration::from_secs(10));
-        kill_swww_daemon()?;
-        swww_daemon_init()?;
-    } else {
-        set_wallpaper_x11(wallpaper)?;
+impl WallSetter {
+    pub fn new() -> WallSetter {
+        WallSetter {}
     }
 
-    Ok(())
-}
-
-pub fn is_running() -> bool {
-    let output = std::process::Command::new("pgrep")
-        .arg("-c")
-        .arg(env!("CARGO_PKG_NAME"))
-        .output();
-
-    output
-        .map(|output| {
-            output.status.success()
-                && std::string::String::from_utf8(output.stdout)
-                    .map(|x| !x.starts_with("1"))
-                    .unwrap_or(false)
-        })
-        .unwrap_or(false)
-}
-
-pub fn kill() -> Result<(), std::io::Error> {
-    let output = std::process::Command::new("pkill")
-        .arg("-o")
-        .arg(env!("CARGO_PKG_NAME"))
-        .output()?;
-
-    if !output.status.success() {
-        eprintln!("{:?}", output.stderr);
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("{:?}", output),
-        ));
+    pub fn init(&self) {
+        if self.is_running_under_wayland() {
+            self.swww_init().unwrap();
+        }
     }
 
-    kill_swww_daemon()?;
+    pub fn set_wallpaper(&self, wallpaper: &std::path::Path) -> Result<(), std::io::Error> {
+        if self.is_running_under_wayland() {
+            self.set_wallpaper_wayland(wallpaper)?;
+            std::thread::sleep(std::time::Duration::from_secs(10));
+            self.kill_swww_daemon()?;
+            self.swww_daemon_init()?;
+        } else {
+            self.set_wallpaper_x11(wallpaper)?;
+        }
 
-    Ok(())
-}
-
-fn kill_swww_daemon() -> Result<(), std::io::Error> {
-    let output = std::process::Command::new("pkill")
-        .arg("-o")
-        .arg("swww-daemon")
-        .output()?;
-
-    if !output.status.success() {
-        eprintln!("{:?}", output.stderr);
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("{:?}", output),
-        ));
+        Ok(())
     }
 
-    Ok(())
-}
+    pub fn is_running(&self) -> bool {
+        let output = std::process::Command::new("pgrep")
+            .arg("-c")
+            .arg(env!("CARGO_PKG_NAME"))
+            .output();
 
-fn swww_init() -> Result<(), std::io::Error> {
-    let output = std::process::Command::new("pgrep")
-        .arg("-f")
-        .arg("swww")
-        .output()?;
-
-    if !output.status.success() {
-        swww_daemon_init()?;
+        output
+            .map(|output| {
+                output.status.success()
+                    && std::string::String::from_utf8(output.stdout)
+                        .map(|x| !x.starts_with("1"))
+                        .unwrap_or(false)
+            })
+            .unwrap_or(false)
     }
 
-    Ok(())
-}
+    pub fn kill(&self) -> Result<(), std::io::Error> {
+        let output = std::process::Command::new("pkill")
+            .arg("-o")
+            .arg(env!("CARGO_PKG_NAME"))
+            .output()?;
 
-fn swww_daemon_init() -> Result<(), std::io::Error> {
-    std::process::Command::new("swww-daemon")
-        .spawn()
-        .map(|mut child| {
-            child
-                .try_wait()
-                .map_err(|child_error| eprintln!("{:?}", child_error))
-                .ok()
-        })?;
-    std::thread::sleep(std::time::Duration::from_secs(2));
+        if !output.status.success() {
+            eprintln!("{:?}", output.stderr);
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("{:?}", output),
+            ));
+        }
 
-    Ok(())
-}
+        self.kill_swww_daemon()?;
 
-fn is_running_under_wayland() -> bool {
-    let wayland = std::env::var("WAYLAND_DISPLAY");
-    wayland.is_ok()
-}
+        Ok(())
+    }
 
-fn set_wallpaper_wayland(wallpaper: &std::path::Path) -> Result<(), std::io::Error> {
-    std::process::Command::new("swww")
-        .arg("img")
-        .arg(wallpaper)
-        .spawn()?
-        .wait()?;
+    fn kill_swww_daemon(&self) -> Result<(), std::io::Error> {
+        let output = std::process::Command::new("pkill")
+            .arg("swww-daemon")
+            .output()?;
 
-    Ok(())
-}
+        if !output.status.success() {
+            eprintln!("{:?}", output.stderr);
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("{:?}", output),
+            ));
+        }
 
-fn set_wallpaper_x11(wallpaper: &std::path::Path) -> Result<(), std::io::Error> {
-    std::process::Command::new("feh")
-        .arg("--bg-fill")
-        .arg(wallpaper)
-        .spawn()?
-        .wait()?;
+        Ok(())
+    }
 
-    Ok(())
+    fn swww_init(&self) -> Result<(), std::io::Error> {
+        let output = std::process::Command::new("pgrep")
+            .arg("-f")
+            .arg("swww")
+            .output()?;
+
+        if !output.status.success() {
+            self.swww_daemon_init()?;
+        }
+
+        Ok(())
+    }
+
+    fn swww_daemon_init(&self) -> Result<(), std::io::Error> {
+        std::thread::sleep(std::time::Duration::from_secs(2));
+        std::process::Command::new("swww-daemon").spawn()?;
+        std::thread::sleep(std::time::Duration::from_secs(2));
+
+        Ok(())
+    }
+
+    fn is_running_under_wayland(&self) -> bool {
+        let wayland = std::env::var("WAYLAND_DISPLAY");
+        wayland.is_ok()
+    }
+
+    fn set_wallpaper_wayland(&self, wallpaper: &std::path::Path) -> Result<(), std::io::Error> {
+        std::process::Command::new("swww")
+            .arg("img")
+            .arg(wallpaper)
+            .spawn()?
+            .wait()?;
+
+        Ok(())
+    }
+
+    fn set_wallpaper_x11(&self, wallpaper: &std::path::Path) -> Result<(), std::io::Error> {
+        std::process::Command::new("feh")
+            .arg("--bg-fill")
+            .arg(wallpaper)
+            .spawn()?
+            .wait()?;
+
+        Ok(())
+    }
 }

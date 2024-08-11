@@ -1,18 +1,20 @@
 #![windows_subsystem = "windows"]
 
-use wallrustler::wallpaper::{init, is_running, kill, set_wallpaper};
+use wallrustler::wallpaper::WallSetter;
 use wallrustler::{
     get_wallpapers_from_path, mean_centering_counts, pick_random_wallpaper, print_help,
     process_args, sync_wallpapers, Error, Option, Wallpaper,
 };
 
 fn main() {
-    if !is_running() {
-        init();
+    let wall_setter = WallSetter::new();
+
+    if !wall_setter.is_running() {
+        wall_setter.init();
     } else {
         println!("Killing already running instance");
-        kill().unwrap();
-        init();
+        wall_setter.kill().unwrap();
+        wall_setter.init();
     }
 
     let options = process_args()
@@ -71,7 +73,7 @@ fn main() {
         wallpapers = sync_wallpapers(&wallpapers_dir_path, wallpapers);
         wallpapers = mean_centering_counts(wallpapers);
         let wallpaper = pick_random_wallpaper(&wallpapers_dir_path, &mut wallpapers);
-        set_wallpaper(&wallpaper).unwrap();
+        wall_setter.set_wallpaper(&wallpaper).unwrap();
         let state =
             serde_binary::to_vec(&wallpapers, serde_binary::binary_stream::Endian::Little).unwrap();
         std::fs::write(&wallpapers_state_path, state).unwrap();

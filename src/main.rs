@@ -7,7 +7,7 @@ use wallrustler::{
 };
 
 fn main() {
-    let wall_setter = WallSetter::new();
+    let mut wall_setter = WallSetter::new();
 
     if !wall_setter.is_running() {
         wall_setter.init();

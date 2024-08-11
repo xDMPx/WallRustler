@@ -1,17 +1,19 @@
-pub struct WallSetter {}
+pub struct WallSetter {
+    child: Option<std::process::Child>,
+}
 
 impl WallSetter {
     pub fn new() -> WallSetter {
-        WallSetter {}
+        WallSetter { child: None }
     }
 
-    pub fn init(&self) {
+    pub fn init(&mut self) {
         if self.is_running_under_wayland() {
             self.swww_init().unwrap();
         }
     }
 
-    pub fn set_wallpaper(&self, wallpaper: &std::path::Path) -> Result<(), std::io::Error> {
+    pub fn set_wallpaper(&mut self, wallpaper: &std::path::Path) -> Result<(), std::io::Error> {
         if self.is_running_under_wayland() {
             self.set_wallpaper_wayland(wallpaper)?;
             std::thread::sleep(std::time::Duration::from_secs(10));
@@ -40,7 +42,7 @@ impl WallSetter {
             .unwrap_or(false)
     }
 
-    pub fn kill(&self) -> Result<(), std::io::Error> {
+    pub fn kill(&mut self) -> Result<(), std::io::Error> {
         let output = std::process::Command::new("pkill")
             .arg("-o")
             .arg(env!("CARGO_PKG_NAME"))
@@ -59,23 +61,29 @@ impl WallSetter {
         Ok(())
     }
 
-    fn kill_swww_daemon(&self) -> Result<(), std::io::Error> {
-        let output = std::process::Command::new("pkill")
-            .arg("swww-daemon")
-            .output()?;
+    fn kill_swww_daemon(&mut self) -> Result<(), std::io::Error> {
+        if let Some(child) = self.child.as_mut() {
+            child.kill()?;
+            child.wait()?;
+            self.child = None;
+        } else {
+            let output = std::process::Command::new("pkill")
+                .arg("swww-daemon")
+                .output()?;
 
-        if !output.status.success() {
-            eprintln!("{:?}", output.stderr);
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("{:?}", output),
-            ));
+            if !output.status.success() {
+                eprintln!("{:?}", output.stderr);
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    format!("{:?}", output),
+                ));
+            }
         }
 
         Ok(())
     }
 
-    fn swww_init(&self) -> Result<(), std::io::Error> {
+    fn swww_init(&mut self) -> Result<(), std::io::Error> {
         let output = std::process::Command::new("pgrep")
             .arg("-f")
             .arg("swww")
@@ -88,9 +96,9 @@ impl WallSetter {
         Ok(())
     }
 
-    fn swww_daemon_init(&self) -> Result<(), std::io::Error> {
+    fn swww_daemon_init(&mut self) -> Result<(), std::io::Error> {
         std::thread::sleep(std::time::Duration::from_secs(2));
-        std::process::Command::new("swww-daemon").spawn()?;
+        self.child = Some(std::process::Command::new("swww-daemon").spawn()?);
         std::thread::sleep(std::time::Duration::from_secs(2));
 
         Ok(())

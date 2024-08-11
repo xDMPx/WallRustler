@@ -1,5 +1,7 @@
 #![windows_subsystem = "windows"]
 
+#[allow(unused_imports)]
+use std::env;
 use wallrustler::wallpaper::WallSetter;
 use wallrustler::{
     get_wallpapers_from_path, mean_centering_counts, pick_random_wallpaper, print_help,
@@ -7,7 +9,17 @@ use wallrustler::{
 };
 
 fn main() {
+    #[allow(unused_mut)]
     let mut wall_setter = WallSetter::new();
+
+    #[cfg(all(feature = "hyprpaper", target_os = "linux"))]
+    {
+        let args: Vec<String> = env::args().collect();
+        println!("hyprpaper");
+        if args.contains(&"--hyprpaper".to_owned()) {
+            wall_setter.set_program(wallrustler::wallpaper::WallSetterProgram::HYPRPAPER);
+        }
+    }
 
     if !wall_setter.is_running() {
         wall_setter.init();

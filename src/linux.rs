@@ -1,24 +1,61 @@
 pub struct WallSetter {
     child: Option<std::process::Child>,
+    program: WallSetterProgram,
+    #[cfg(feature = "hyprpaper")]
+    hyprpaper: Option<std::process::Child>,
+}
+
+pub enum WallSetterProgram {
+    SWWW,
+    #[cfg(feature = "hyprpaper")]
+    HYPRPAPER,
 }
 
 impl WallSetter {
     pub fn new() -> WallSetter {
-        WallSetter { child: None }
+        WallSetter {
+            child: None,
+            program: WallSetterProgram::SWWW,
+            #[cfg(feature = "hyprpaper")]
+            hyprpaper: None,
+        }
+    }
+
+    pub fn set_program(&mut self, program: WallSetterProgram) {
+        self.program = program;
     }
 
     pub fn init(&mut self) {
         if self.is_running_under_wayland() {
-            self.swww_init().unwrap();
+            match &self.program {
+                WallSetterProgram::SWWW => {
+                    self.swww_init().unwrap();
+                }
+                #[cfg(feature = "hyprpaper")]
+                WallSetterProgram::HYPRPAPER => {
+                    self.hyprpaper_init().unwrap();
+                }
+            }
         }
     }
 
     pub fn set_wallpaper(&mut self, wallpaper: &std::path::Path) -> Result<(), std::io::Error> {
         if self.is_running_under_wayland() {
-            self.set_wallpaper_wayland(wallpaper)?;
-            std::thread::sleep(std::time::Duration::from_secs(10));
-            self.kill_swww_daemon()?;
-            self.swww_daemon_init()?;
+            match &self.program {
+                WallSetterProgram::SWWW => {
+                    self.set_wallpaper_wayland(wallpaper)?;
+                    std::thread::sleep(std::time::Duration::from_secs(10));
+                    self.kill_swww_daemon()?;
+                    self.swww_daemon_init()?;
+                }
+                #[cfg(feature = "hyprpaper")]
+                WallSetterProgram::HYPRPAPER => {
+                    self.hyprpaper_preload(wallpaper)?;
+                    self.hyprpaper_set_wallpaper(wallpaper)?;
+                    std::thread::sleep(std::time::Duration::from_secs(2));
+                    self.hyprpaper_unload_all()?;
+                }
+            }
         } else {
             self.set_wallpaper_x11(wallpaper)?;
         }
@@ -56,7 +93,15 @@ impl WallSetter {
             ));
         }
 
-        self.kill_swww_daemon()?;
+        match &self.program {
+            WallSetterProgram::SWWW => {
+                self.kill_swww_daemon()?;
+            }
+            #[cfg(feature = "hyprpaper")]
+            WallSetterProgram::HYPRPAPER => {
+                self.kill_hyprpaper()?;
+            }
+        }
 
         Ok(())
     }
@@ -104,17 +149,106 @@ impl WallSetter {
         Ok(())
     }
 
+    fn swww_set_wallpaper(&self, wallpaper: &std::path::Path) -> Result<(), std::io::Error> {
+        std::process::Command::new("swww")
+            .arg("img")
+            .arg(wallpaper)
+            .spawn()?
+            .wait()?;
+
+        Ok(())
+    }
+
+    #[cfg(feature = "hyprpaper")]
+    fn hyprpaper_init(&mut self) -> Result<(), std::io::Error> {
+        let output = std::process::Command::new("pgrep")
+            .arg("hyprpaper")
+            .output()?;
+
+        if !output.status.success() {
+            self.hyprpaper = Some(std::process::Command::new("hyprpaper").spawn()?);
+            std::thread::sleep(std::time::Duration::from_secs(2));
+        }
+
+        Ok(())
+    }
+
+    #[cfg(feature = "hyprpaper")]
+    fn kill_hyprpaper(&mut self) -> Result<(), std::io::Error> {
+        if let Some(hyprpaper) = self.hyprpaper.as_mut() {
+            hyprpaper.kill()?;
+            hyprpaper.wait()?;
+            self.hyprpaper = None;
+        } else {
+            let output = std::process::Command::new("pkill")
+                .arg("hyprpaper")
+                .output()?;
+
+            if !output.status.success() {
+                eprintln!("{:?}", output.stderr);
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    format!("{:?}", output),
+                ));
+            }
+        }
+
+        Ok(())
+    }
+
+    #[cfg(feature = "hyprpaper")]
+    fn hyprpaper_preload(&self, wallpaper: &std::path::Path) -> Result<(), std::io::Error> {
+        std::process::Command::new("hyprctl")
+            .arg("hyprpaper")
+            .arg("preload")
+            .arg(wallpaper)
+            .spawn()?
+            .wait()?;
+
+        println!("preload: {:?}", wallpaper);
+
+        Ok(())
+    }
+
+    #[cfg(feature = "hyprpaper")]
+    fn hyprpaper_unload_all(&self) -> Result<(), std::io::Error> {
+        std::process::Command::new("hyprctl")
+            .arg("hyprpaper")
+            .arg("unload")
+            .arg("all")
+            .spawn()?
+            .wait()?;
+
+        Ok(())
+    }
+
+    #[cfg(feature = "hyprpaper")]
+    fn hyprpaper_set_wallpaper(&self, wallpaper: &std::path::Path) -> Result<(), std::io::Error> {
+        std::process::Command::new("hyprctl")
+            .arg("hyprpaper")
+            .arg("wallpaper")
+            .arg(format!(",{}", wallpaper.display()))
+            .spawn()?
+            .wait()?;
+
+        Ok(())
+    }
+
     fn is_running_under_wayland(&self) -> bool {
         let wayland = std::env::var("WAYLAND_DISPLAY");
         wayland.is_ok()
     }
 
     fn set_wallpaper_wayland(&self, wallpaper: &std::path::Path) -> Result<(), std::io::Error> {
-        std::process::Command::new("swww")
-            .arg("img")
-            .arg(wallpaper)
-            .spawn()?
-            .wait()?;
+        match &self.program {
+            WallSetterProgram::SWWW => {
+                self.swww_set_wallpaper(wallpaper)?;
+            }
+            #[cfg(feature = "hyprpaper")]
+            WallSetterProgram::HYPRPAPER => {
+                self.hyprpaper_set_wallpaper(wallpaper)?;
+            }
+        }
 
         Ok(())
     }

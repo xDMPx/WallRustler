@@ -28,7 +28,9 @@ pub enum Error {
 
 pub fn process_args() -> Result<Vec<Option>, Error> {
     let mut options = vec![];
-    let mut args = std::env::args().skip(1).rev();
+    let args = std::env::args().skip(1).rev();
+    let mut args = args.filter(|x| x != "--hyprpaper");
+
     if let Some(wallpapers_dir_path) = args.next() {
         let wallpapers_dir_path = std::path::PathBuf::from(wallpapers_dir_path);
         if !wallpapers_dir_path.is_dir() {

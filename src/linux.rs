@@ -5,6 +5,7 @@ pub struct WallSetter {
     hyprpaper: Option<std::process::Child>,
 }
 
+#[derive(Debug, PartialEq)]
 pub enum WallSetterProgram {
     SWWW,
     #[cfg(feature = "hyprpaper")]

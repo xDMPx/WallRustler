@@ -5,6 +5,9 @@ pub mod wallpaper;
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 
+#[cfg(all(feature = "hyprpaper", target_os = "linux"))]
+use wallpaper::WallSetterProgram;
+
 const COUNT_FACTOR: f64 = 1.001;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -18,6 +21,8 @@ pub enum Option {
     Path(std::path::PathBuf),
     PrintState,
     PrintHelp,
+    #[cfg(all(feature = "hyprpaper", target_os = "linux"))]
+    Program(WallSetterProgram),
 }
 
 #[derive(Debug)]
@@ -28,8 +33,7 @@ pub enum Error {
 
 pub fn process_args() -> Result<Vec<Option>, Error> {
     let mut options = vec![];
-    let args = std::env::args().skip(1).rev();
-    let mut args = args.filter(|x| x != "--hyprpaper");
+    let mut args = std::env::args().skip(1).rev();
 
     if let Some(wallpapers_dir_path) = args.next() {
         let wallpapers_dir_path = std::path::PathBuf::from(wallpapers_dir_path);
@@ -38,9 +42,20 @@ pub fn process_args() -> Result<Vec<Option>, Error> {
         }
         options.push(Option::Path(wallpapers_dir_path));
         for arg in args {
+            println!("{arg}");
             let arg = match arg.as_str() {
                 "--print-state" => Ok(Option::PrintState),
                 "--help" => Ok(Option::PrintState),
+                #[cfg(all(feature = "hyprpaper", target_os = "linux"))]
+                s if s.starts_with("--program=") => {
+                    if s.ends_with("swww") {
+                        Ok(Option::Program(WallSetterProgram::SWWW))
+                    } else if s.ends_with("hyprpaper") {
+                        Ok(Option::Program(WallSetterProgram::HYPRPAPER))
+                    } else {
+                        Err(Error::InvalidOption(arg))
+                    }
+                }
                 _ => Err(Error::InvalidOption(arg)),
             };
             options.push(arg?);
@@ -56,6 +71,8 @@ pub fn print_help() {
     println!("       {} --print-state DIRECTORY", env!("CARGO_PKG_NAME"));
     println!("Options:");
     println!("\t --help");
+    #[cfg(all(feature = "hyprpaper", target_os = "linux"))]
+    println!("\t --program=<swww|hyprpaper>");
 }
 
 pub fn pick_random_wallpaper(

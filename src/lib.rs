@@ -21,6 +21,7 @@ pub enum Option {
     Path(std::path::PathBuf),
     PrintState,
     PrintHelp,
+    Interval(u64),
     #[cfg(all(feature = "hyprpaper", target_os = "linux"))]
     Program(WallSetterProgram),
 }
@@ -42,10 +43,24 @@ pub fn process_args() -> Result<Vec<Option>, Error> {
         }
         options.push(Option::Path(wallpapers_dir_path));
         for arg in args {
-            println!("{arg}");
             let arg = match arg.as_str() {
                 "--print-state" => Ok(Option::PrintState),
                 "--help" => Ok(Option::PrintState),
+                s if s.starts_with("--interval=") => {
+                    if let Some(suffix) = s.split_once('=').map(|(_, s)| s.parse::<u64>()) {
+                        if let Ok(sec) = suffix {
+                            if sec > 0 {
+                                Ok(Option::Interval(sec))
+                            } else {
+                                Err(Error::InvalidOption(arg))
+                            }
+                        } else {
+                            Err(Error::InvalidOption(arg))
+                        }
+                    } else {
+                        Err(Error::InvalidOption(arg))
+                    }
+                }
                 #[cfg(all(feature = "hyprpaper", target_os = "linux"))]
                 s if s.starts_with("--program=") => {
                     if s.ends_with("swww") {
@@ -71,6 +86,7 @@ pub fn print_help() {
     println!("       {} --print-state DIRECTORY", env!("CARGO_PKG_NAME"));
     println!("Options:");
     println!("\t --help");
+    println!("\t --interval=<u64>");
     #[cfg(all(feature = "hyprpaper", target_os = "linux"))]
     println!("\t --program=<swww|hyprpaper>");
 }

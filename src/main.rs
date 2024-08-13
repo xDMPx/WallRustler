@@ -15,6 +15,8 @@ fn main() {
     #[allow(unused_mut)]
     let mut wall_setter = WallSetter::new();
 
+    let mut interval = 15 * 60;
+
     let options = process_args()
         .map_err(|err| {
             match err {
@@ -29,6 +31,14 @@ fn main() {
         print_help();
         std::process::exit(-1);
     }
+
+    if let Some(s) = options.iter().find_map(|o| match o {
+        Option::Interval(sec) => Some(sec),
+        _ => None,
+    }) {
+        interval = s * 60;
+    }
+
     #[cfg(all(feature = "hyprpaper", target_os = "linux"))]
     if options.contains(&Option::Program(WallSetterProgram::HYPRPAPER)) {
         println!("Using hyprpaper");
@@ -89,6 +99,6 @@ fn main() {
         let state =
             serde_binary::to_vec(&wallpapers, serde_binary::binary_stream::Endian::Little).unwrap();
         std::fs::write(&wallpapers_state_path, state).unwrap();
-        std::thread::sleep(std::time::Duration::from_secs(1 * 60));
+        std::thread::sleep(std::time::Duration::from_secs(interval));
     }
 }

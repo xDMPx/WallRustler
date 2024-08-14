@@ -1,6 +1,7 @@
 pub struct WallSetter {
     child: Option<std::process::Child>,
     program: WallSetterProgram,
+    restart_swww: bool,
     #[cfg(feature = "hyprpaper")]
     hyprpaper: Option<std::process::Child>,
 }
@@ -17,6 +18,7 @@ impl WallSetter {
         WallSetter {
             child: None,
             program: WallSetterProgram::SWWW,
+            restart_swww: false,
             #[cfg(feature = "hyprpaper")]
             hyprpaper: None,
         }
@@ -24,6 +26,10 @@ impl WallSetter {
 
     pub fn set_program(&mut self, program: WallSetterProgram) {
         self.program = program;
+    }
+
+    pub fn set_restart_swww(&mut self, restart_swww: bool) {
+        self.restart_swww = restart_swww;
     }
 
     pub fn init(&mut self) {
@@ -45,9 +51,11 @@ impl WallSetter {
             match &self.program {
                 WallSetterProgram::SWWW => {
                     self.set_wallpaper_wayland(wallpaper)?;
-                    std::thread::sleep(std::time::Duration::from_secs(10));
-                    self.kill_swww_daemon()?;
-                    self.swww_daemon_init()?;
+                    if self.restart_swww {
+                        std::thread::sleep(std::time::Duration::from_secs(10));
+                        self.kill_swww_daemon()?;
+                        self.swww_daemon_init()?;
+                    }
                 }
                 #[cfg(feature = "hyprpaper")]
                 WallSetterProgram::HYPRPAPER => {

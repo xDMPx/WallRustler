@@ -22,6 +22,8 @@ pub enum Option {
     PrintState,
     PrintHelp,
     Interval(u64),
+    #[cfg(target_os = "linux")]
+    RestartSWWW,
     #[cfg(all(feature = "hyprpaper", target_os = "linux"))]
     Program(WallSetterProgram),
 }
@@ -48,9 +50,9 @@ pub fn process_args() -> Result<Vec<Option>, Error> {
                 "--help" => Ok(Option::PrintState),
                 s if s.starts_with("--interval=") => {
                     if let Some(suffix) = s.split_once('=').map(|(_, s)| s.parse::<u64>()) {
-                        if let Ok(sec) = suffix {
-                            if sec > 0 {
-                                Ok(Option::Interval(sec))
+                        if let Ok(min) = suffix {
+                            if min > 0 {
+                                Ok(Option::Interval(min))
                             } else {
                                 Err(Error::InvalidOption(arg))
                             }
@@ -61,6 +63,8 @@ pub fn process_args() -> Result<Vec<Option>, Error> {
                         Err(Error::InvalidOption(arg))
                     }
                 }
+                #[cfg(target_os = "linux")]
+                "--restart-swww" => Ok(Option::RestartSWWW),
                 #[cfg(all(feature = "hyprpaper", target_os = "linux"))]
                 s if s.starts_with("--program=") => {
                     if s.ends_with("swww") {
@@ -87,6 +91,7 @@ pub fn print_help() {
     println!("Options:");
     println!("\t --help");
     println!("\t --interval=<u64>");
+    println!("\t --restart-swww\t\t\t\tMight resolve the issue with out-of-sync and overlapping animations/wallpapers");
     #[cfg(all(feature = "hyprpaper", target_os = "linux"))]
     println!("\t --program=<swww|hyprpaper>");
 }

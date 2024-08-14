@@ -31,12 +31,16 @@ fn main() {
         print_help();
         std::process::exit(-1);
     }
+    #[cfg(target_os = "linux")]
+    if options.contains(&Option::RestartSWWW) {
+        wall_setter.set_restart_swww(true);
+    }
 
-    if let Some(s) = options.iter().find_map(|o| match o {
-        Option::Interval(sec) => Some(sec),
+    if let Some(m) = options.iter().find_map(|o| match o {
+        Option::Interval(min) => Some(min),
         _ => None,
     }) {
-        interval = s * 60;
+        interval = m * 60;
     }
 
     #[cfg(all(feature = "hyprpaper", target_os = "linux"))]

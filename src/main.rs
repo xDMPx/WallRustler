@@ -8,6 +8,9 @@ use wallrustler::{
     process_args, sync_wallpapers, Error, Option, Wallpaper,
 };
 
+#[cfg(target_os = "linux")]
+use wallrustler::wallpaper::WallSetterProgram;
+
 fn main() {
     #[allow(unused_mut)]
     let mut wall_setter = WallSetter::new();
@@ -38,6 +41,14 @@ fn main() {
         _ => None,
     }) {
         interval = m * 60;
+    }
+
+    #[cfg(target_os = "linux")]
+    if let Ok(val) = env::var("XDG_CURRENT_DESKTOP") {
+        if val == "KDE" {
+            println!("KDE detected, switching to plasma-apply-wallpaperimage as wallpaper setting program\nThis behavior can be changed by using --program option");
+            wall_setter.set_program(WallSetterProgram::PLASMA);
+        }
     }
 
     #[cfg(target_os = "linux")]

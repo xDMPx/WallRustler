@@ -8,9 +8,6 @@ use wallrustler::{
     process_args, sync_wallpapers, Error, Option, Wallpaper,
 };
 
-#[cfg(all(feature = "hyprpaper", target_os = "linux"))]
-use wallrustler::wallpaper::WallSetterProgram;
-
 fn main() {
     #[allow(unused_mut)]
     let mut wall_setter = WallSetter::new();
@@ -43,10 +40,13 @@ fn main() {
         interval = m * 60;
     }
 
-    #[cfg(all(feature = "hyprpaper", target_os = "linux"))]
-    if options.contains(&Option::Program(WallSetterProgram::HYPRPAPER)) {
-        println!("Using hyprpaper");
-        wall_setter.set_program(wallrustler::wallpaper::WallSetterProgram::HYPRPAPER);
+    #[cfg(target_os = "linux")]
+    if let Some(p) = options.iter().find_map(|o| match o {
+        Option::Program(program) => Some(program),
+        _ => None,
+    }) {
+        println!("Using {p:?}");
+        wall_setter.set_program(*p);
     }
 
     let wallpapers_dir_path = options

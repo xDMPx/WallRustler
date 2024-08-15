@@ -6,7 +6,7 @@ pub struct WallSetter {
     hyprpaper: Option<std::process::Child>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum WallSetterProgram {
     SWWW,
     PLASMA,

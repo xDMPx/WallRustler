@@ -9,6 +9,7 @@ pub struct WallSetter {
 #[derive(Debug, PartialEq)]
 pub enum WallSetterProgram {
     SWWW,
+    PLASMA,
     #[cfg(feature = "hyprpaper")]
     HYPRPAPER,
 }
@@ -38,6 +39,7 @@ impl WallSetter {
                 WallSetterProgram::SWWW => {
                     self.swww_init().unwrap();
                 }
+                WallSetterProgram::PLASMA => {}
                 #[cfg(feature = "hyprpaper")]
                 WallSetterProgram::HYPRPAPER => {
                     self.hyprpaper_init().unwrap();
@@ -56,6 +58,9 @@ impl WallSetter {
                         self.kill_swww_daemon()?;
                         self.swww_daemon_init()?;
                     }
+                }
+                WallSetterProgram::PLASMA => {
+                    self.set_wallpaper_wayland(wallpaper)?;
                 }
                 #[cfg(feature = "hyprpaper")]
                 WallSetterProgram::HYPRPAPER => {
@@ -106,6 +111,7 @@ impl WallSetter {
             WallSetterProgram::SWWW => {
                 self.kill_swww_daemon()?;
             }
+            WallSetterProgram::PLASMA => {}
             #[cfg(feature = "hyprpaper")]
             WallSetterProgram::HYPRPAPER => {
                 self.kill_hyprpaper()?;
@@ -243,6 +249,15 @@ impl WallSetter {
         Ok(())
     }
 
+    fn plasma_set_wallpaper(&self, wallpaper: &std::path::Path) -> Result<(), std::io::Error> {
+        std::process::Command::new("plasma-apply-wallpaperimage")
+            .arg(wallpaper)
+            .spawn()?
+            .wait()?;
+
+        Ok(())
+    }
+
     fn is_running_under_wayland(&self) -> bool {
         let wayland = std::env::var("WAYLAND_DISPLAY");
         wayland.is_ok()
@@ -252,6 +267,9 @@ impl WallSetter {
         match &self.program {
             WallSetterProgram::SWWW => {
                 self.swww_set_wallpaper(wallpaper)?;
+            }
+            WallSetterProgram::PLASMA => {
+                self.plasma_set_wallpaper(wallpaper)?;
             }
             #[cfg(feature = "hyprpaper")]
             WallSetterProgram::HYPRPAPER => {

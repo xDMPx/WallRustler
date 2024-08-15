@@ -4,8 +4,7 @@ pub mod wallpaper;
 
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
-
-#[cfg(all(feature = "hyprpaper", target_os = "linux"))]
+#[cfg(target_os = "linux")]
 use wallpaper::WallSetterProgram;
 
 const COUNT_FACTOR: f64 = 1.001;
@@ -24,7 +23,7 @@ pub enum Option {
     Interval(u64),
     #[cfg(target_os = "linux")]
     RestartSWWW,
-    #[cfg(all(feature = "hyprpaper", target_os = "linux"))]
+    #[cfg(target_os = "linux")]
     Program(WallSetterProgram),
 }
 
@@ -65,12 +64,20 @@ pub fn process_args() -> Result<Vec<Option>, Error> {
                 }
                 #[cfg(target_os = "linux")]
                 "--restart-swww" => Ok(Option::RestartSWWW),
-                #[cfg(all(feature = "hyprpaper", target_os = "linux"))]
+                #[cfg(target_os = "linux")]
                 s if s.starts_with("--program=") => {
                     if s.ends_with("swww") {
                         Ok(Option::Program(WallSetterProgram::SWWW))
+                    } else if s.ends_with("plasma-apply-wallpaperimage") {
+                        Ok(Option::Program(WallSetterProgram::PLASMA))
                     } else if s.ends_with("hyprpaper") {
-                        Ok(Option::Program(WallSetterProgram::HYPRPAPER))
+                        #[allow(unused_mut, unused_assignments)]
+                        let mut option = Err(Error::InvalidOption(arg));
+                        #[cfg(all(feature = "hyprpaper", target_os = "linux"))]
+                        {
+                            option = Ok(Option::Program(WallSetterProgram::HYPRPAPER));
+                        }
+                        option
                     } else {
                         Err(Error::InvalidOption(arg))
                     }
@@ -92,8 +99,10 @@ pub fn print_help() {
     println!("\t --help");
     println!("\t --interval=<u64>");
     println!("\t --restart-swww\t\t\t\tMight resolve the issue with out-of-sync and overlapping animations/wallpapers");
+    #[cfg(not(all(feature = "hyprpaper", target_os = "linux")))]
+    println!("\t --program=<swww|plasma-apply-wallpaperimage>");
     #[cfg(all(feature = "hyprpaper", target_os = "linux"))]
-    println!("\t --program=<swww|hyprpaper>");
+    println!("\t --program=<swww|hyprpaper|plasma-apply-wallpaperimage>");
 }
 
 pub fn pick_random_wallpaper(

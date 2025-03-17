@@ -83,7 +83,7 @@ fn main() {
         println!("Using previous state");
         serde_binary::from_vec(state, serde_binary::binary_stream::Endian::Little).unwrap()
     } else {
-        let wallpapers_paths = get_wallpapers_from_path(&wallpapers_dir_path);
+        let wallpapers_paths = get_wallpapers_from_path(wallpapers_dir_path);
         let wallpapers = wallpapers_paths
             .into_iter()
             .map(|wallpaper_path| Wallpaper {
@@ -94,7 +94,7 @@ fn main() {
     };
 
     if options.contains(&Option::PrintState) {
-        wallpapers = sync_wallpapers(&wallpapers_dir_path, wallpapers);
+        wallpapers = sync_wallpapers(wallpapers_dir_path, wallpapers);
         let states: Vec<(String, usize)> = wallpapers
             .iter()
             .map(|wallpaper| (wallpaper.file_name.to_owned(), wallpaper.count))
@@ -107,9 +107,9 @@ fn main() {
     }
 
     loop {
-        wallpapers = sync_wallpapers(&wallpapers_dir_path, wallpapers);
+        wallpapers = sync_wallpapers(wallpapers_dir_path, wallpapers);
         wallpapers = mean_centering_counts(wallpapers);
-        let wallpaper = pick_random_wallpaper(&wallpapers_dir_path, &mut wallpapers);
+        let wallpaper = pick_random_wallpaper(wallpapers_dir_path, &mut wallpapers);
         wall_setter.set_wallpaper(&wallpaper).unwrap();
         let state =
             serde_binary::to_vec(&wallpapers, serde_binary::binary_stream::Endian::Little).unwrap();

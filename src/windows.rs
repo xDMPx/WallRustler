@@ -64,9 +64,8 @@ impl WallSetter {
             .arg(format!("IMAGENAME eq {}.exe", env!("CARGO_PKG_NAME")))
             .output()?;
 
-        let pid: String;
         let out = std::string::String::from_utf8_lossy(&output.stdout);
-        pid = out
+        let pid: String = out
             .lines()
             .next()
             .map(|line| {
@@ -90,10 +89,10 @@ impl WallSetter {
         if let Ok(pid) = pid.parse() {
             Ok(pid)
         } else {
-            return Err(std::io::Error::new(
+            Err(std::io::Error::new(
                 std::io::ErrorKind::Other,
                 format!("tasklist invalid pid: {}", pid),
-            ));
+            ))
         }
     }
 

@@ -49,13 +49,9 @@ pub fn process_args() -> Result<Vec<Option>, Error> {
             "--print-state" => Ok(Option::PrintState),
             "--help" => Ok(Option::PrintState),
             s if s.starts_with("--interval=") => {
-                if let Some(suffix) = s.split_once('=').map(|(_, s)| s.parse::<u64>()) {
-                    if let Ok(min) = suffix {
-                        if min > 0 {
-                            Ok(Option::Interval(min))
-                        } else {
-                            Err(Error::InvalidOption(arg))
-                        }
+                if let Some(Ok(min)) = s.split_once('=').map(|(_, s)| s.parse::<u64>()) {
+                    if min > 0 {
+                        Ok(Option::Interval(min))
                     } else {
                         Err(Error::InvalidOption(arg))
                     }
@@ -106,7 +102,7 @@ pub fn print_help() {
 
 pub fn pick_random_wallpaper(
     wallpaper_dir_path: &std::path::Path,
-    wallpapers: &mut Vec<Wallpaper>,
+    wallpapers: &mut [Wallpaper],
 ) -> std::path::PathBuf {
     let total_count_w: f64 = wallpapers
         .iter()
@@ -117,11 +113,10 @@ pub fn pick_random_wallpaper(
     let mut cum_count_w: f64 = 0.0;
     let wallpaper = wallpapers
         .iter_mut()
-        .skip_while(|wallpaper| {
+        .find(|wallpaper| {
             cum_count_w += COUNT_FACTOR.powf(-(wallpaper.count as f64));
             cum_count_w < rand_num
         })
-        .next()
         .unwrap();
 
     wallpaper.count += 1;
@@ -133,7 +128,7 @@ pub fn sync_wallpapers(
     wallpaper_dir_path: &std::path::Path,
     mut wallpapers: Vec<Wallpaper>,
 ) -> Vec<Wallpaper> {
-    let wallpapers_names = get_wallpapers_from_path(&wallpaper_dir_path);
+    let wallpapers_names = get_wallpapers_from_path(wallpaper_dir_path);
 
     let old_wallpapers_names: Vec<&String> = wallpapers
         .iter()
@@ -185,17 +180,13 @@ pub fn mean_centering_counts(mut wallpapers: Vec<Wallpaper>) -> Vec<Wallpaper> {
 pub fn get_wallpapers_from_path(wallpaper_dir_path: &std::path::Path) -> Vec<String> {
     let wallpapers = wallpaper_dir_path.read_dir().unwrap();
     let wallpapers = wallpapers.filter_map(|dir_entry| dir_entry.ok());
-    let wallpapers = wallpapers.filter(|dir_entry| {
-        dir_entry
-            .path()
-            .extension()
-            .map_or(false, |extension| is_img_file(extension))
-    });
+    let wallpapers =
+        wallpapers.filter(|dir_entry| dir_entry.path().extension().is_some_and(is_img_file));
     let wallpapers = wallpapers.map(|dir_entry| {
         dir_entry
             .file_name()
             .into_string()
-            .expect(&format!("Invalid Unicode file name: {:?}", dir_entry))
+            .unwrap_or_else(|_| panic!("Invalid Unicode file name: {:?}", dir_entry))
     });
 
     wallpapers.collect()

@@ -37,59 +37,58 @@ pub fn process_args() -> Result<Vec<Option>, Error> {
     let mut options = vec![];
     let mut args = std::env::args().skip(1).rev();
 
-    if let Some(wallpapers_dir_path) = args.next() {
-        let wallpapers_dir_path = std::path::PathBuf::from(wallpapers_dir_path);
-        if !wallpapers_dir_path.is_dir() {
-            return Err(Error::InvalidOptionsStructure);
-        }
-        options.push(Option::Path(wallpapers_dir_path));
-        for arg in args {
-            let arg = match arg.as_str() {
-                "--print-state" => Ok(Option::PrintState),
-                "--help" => Ok(Option::PrintState),
-                s if s.starts_with("--interval=") => {
-                    if let Some(suffix) = s.split_once('=').map(|(_, s)| s.parse::<u64>()) {
-                        if let Ok(min) = suffix {
-                            if min > 0 {
-                                Ok(Option::Interval(min))
-                            } else {
-                                Err(Error::InvalidOption(arg))
-                            }
+    let wallpapers_dir_path = args.next().ok_or(Error::InvalidOptionsStructure)?;
+
+    let wallpapers_dir_path = std::path::PathBuf::from(wallpapers_dir_path);
+    if !wallpapers_dir_path.is_dir() {
+        return Err(Error::InvalidOptionsStructure);
+    }
+    options.push(Option::Path(wallpapers_dir_path));
+    for arg in args {
+        let arg = match arg.as_str() {
+            "--print-state" => Ok(Option::PrintState),
+            "--help" => Ok(Option::PrintState),
+            s if s.starts_with("--interval=") => {
+                if let Some(suffix) = s.split_once('=').map(|(_, s)| s.parse::<u64>()) {
+                    if let Ok(min) = suffix {
+                        if min > 0 {
+                            Ok(Option::Interval(min))
                         } else {
                             Err(Error::InvalidOption(arg))
                         }
                     } else {
                         Err(Error::InvalidOption(arg))
                     }
+                } else {
+                    Err(Error::InvalidOption(arg))
                 }
-                #[cfg(target_os = "linux")]
-                "--restart-swww" => Ok(Option::RestartSWWW),
-                #[cfg(target_os = "linux")]
-                s if s.starts_with("--program=") => {
-                    if s.ends_with("swww") {
-                        Ok(Option::Program(WallSetterProgram::SWWW))
-                    } else if s.ends_with("plasma-apply-wallpaperimage") {
-                        Ok(Option::Program(WallSetterProgram::PLASMA))
-                    } else if s.ends_with("hyprpaper") {
-                        #[allow(unused_mut, unused_assignments)]
-                        let mut option = Err(Error::InvalidOption(arg));
-                        #[cfg(all(feature = "hyprpaper", target_os = "linux"))]
-                        {
-                            option = Ok(Option::Program(WallSetterProgram::HYPRPAPER));
-                        }
-                        option
-                    } else {
-                        Err(Error::InvalidOption(arg))
+            }
+            #[cfg(target_os = "linux")]
+            "--restart-swww" => Ok(Option::RestartSWWW),
+            #[cfg(target_os = "linux")]
+            s if s.starts_with("--program=") => {
+                if s.ends_with("swww") {
+                    Ok(Option::Program(WallSetterProgram::SWWW))
+                } else if s.ends_with("plasma-apply-wallpaperimage") {
+                    Ok(Option::Program(WallSetterProgram::PLASMA))
+                } else if s.ends_with("hyprpaper") {
+                    #[allow(unused_mut, unused_assignments)]
+                    let mut option = Err(Error::InvalidOption(arg));
+                    #[cfg(all(feature = "hyprpaper", target_os = "linux"))]
+                    {
+                        option = Ok(Option::Program(WallSetterProgram::HYPRPAPER));
                     }
+                    option
+                } else {
+                    Err(Error::InvalidOption(arg))
                 }
-                _ => Err(Error::InvalidOption(arg)),
-            };
-            options.push(arg?);
-        }
-        return Ok(options);
-    } else {
-        return Err(Error::InvalidOptionsStructure);
+            }
+            _ => Err(Error::InvalidOption(arg)),
+        };
+        options.push(arg?);
     }
+
+    Ok(options)
 }
 
 pub fn print_help() {

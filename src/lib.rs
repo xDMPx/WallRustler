@@ -199,19 +199,12 @@ pub fn get_wallpapers_from_path(wallpaper_dir_path: &std::path::Path) -> Vec<Str
 }
 
 fn is_img_file(extension: &std::ffi::OsStr) -> bool {
-    match extension.to_string_lossy().to_string().as_str() {
-        "jpg" => true,
-        "jpeg" => true,
-        "png" => true,
-        "gif" => true,
-        "pnm" => true,
-        "tga" => true,
-        "tiff" => true,
-        "webp" => true,
-        "bmp" => true,
-        "farbfeld" => true,
-        _ => false,
-    }
+    let ext_str = extension.to_string_lossy().to_string();
+
+    matches!(
+        ext_str.as_str(),
+        "jpg" | "jpeg" | "png" | "gif" | "pnm" | "tga" | "tiff" | "webp" | "bmp" | "farbfeld"
+    )
 }
 
 fn get_random_num(to: f64) -> f64 {

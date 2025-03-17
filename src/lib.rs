@@ -2,6 +2,12 @@
 #[cfg_attr(not(target_os = "windows"), path = "linux.rs")]
 pub mod wallpaper;
 
+impl Default for crate::wallpaper::WallSetter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 #[cfg(target_os = "linux")]

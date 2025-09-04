@@ -121,7 +121,7 @@ pub fn pick_random_wallpaper(
         .iter_mut()
         .find(|wallpaper| {
             cum_count_w += COUNT_FACTOR.powf(-(wallpaper.count as f64));
-            cum_count_w < rand_num
+            cum_count_w >= rand_num
         })
         .unwrap();
 

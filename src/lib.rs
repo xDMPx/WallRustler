@@ -39,19 +39,24 @@ pub enum Error {
 
 pub fn process_args() -> Result<Vec<Option>, Error> {
     let mut options = vec![];
-    let mut args = std::env::args().skip(1).rev();
+    let mut args: Vec<String> = std::env::args().skip(1).collect();
 
-    let wallpapers_dir_path = args.next().ok_or(Error::InvalidOptionsStructure)?;
-
-    let wallpapers_dir_path = std::path::PathBuf::from(wallpapers_dir_path);
-    if !wallpapers_dir_path.is_dir() {
-        return Err(Error::InvalidOptionsStructure);
+    let last_arg = args.pop().ok_or(Error::InvalidOptionsStructure)?;
+    if last_arg != "--help" {
+        let wallpapers_dir_path = last_arg;
+        let wallpapers_dir_path = std::path::PathBuf::from(wallpapers_dir_path);
+        if !wallpapers_dir_path.is_dir() {
+            return Err(Error::InvalidOptionsStructure);
+        }
+        options.push(Option::Path(wallpapers_dir_path));
+    } else {
+        args.push(last_arg);
     }
-    options.push(Option::Path(wallpapers_dir_path));
+
     for arg in args {
         let arg = match arg.as_str() {
             "--print-state" => Ok(Option::PrintState),
-            "--help" => Ok(Option::PrintState),
+            "--help" => Ok(Option::PrintHelp),
             s if s.starts_with("--interval=") => {
                 if let Some(Ok(min)) = s.split_once('=').map(|(_, s)| s.parse::<u64>()) {
                     if min > 0 {
@@ -92,6 +97,7 @@ pub fn process_args() -> Result<Vec<Option>, Error> {
 pub fn print_help() {
     println!("Usage: {} [OPTIONS] DIRECTORY", env!("CARGO_PKG_NAME"));
     println!("       {} --print-state DIRECTORY", env!("CARGO_PKG_NAME"));
+    println!("       {} --help", env!("CARGO_PKG_NAME"));
     println!("Options:");
     println!("\t --help");
     println!("\t --interval=<u64>");

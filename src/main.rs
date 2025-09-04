@@ -31,6 +31,22 @@ fn main() {
         print_help();
         std::process::exit(-1);
     }
+    if options.contains(&Option::PrintState) {
+        let wallpapers_dir_path = find_wallpaper_path(&options).unwrap();
+        let mut wallpapers = retrieve_wallpapers(wallpapers_dir_path);
+        wallpapers = sync_wallpapers(wallpapers_dir_path, wallpapers);
+
+        let states: Vec<(String, usize)> = wallpapers
+            .iter()
+            .map(|wallpaper| (wallpaper.file_name.to_owned(), wallpaper.count))
+            .collect();
+        let max_len = states.iter().map(|(name, _)| name.len()).max().unwrap();
+        for (name, count) in states {
+            println!("{:<max_len$}: {count}", name);
+        }
+        return;
+    }
+
     if let Some(m) = options.iter().find_map(|o| match o {
         Option::Interval(min) => Some(min),
         _ => None,
@@ -67,19 +83,6 @@ fn main() {
 
     let mut wallpapers = retrieve_wallpapers(wallpapers_dir_path);
     wallpapers = sync_wallpapers(wallpapers_dir_path, wallpapers);
-
-    if options.contains(&Option::PrintState) {
-        wallpapers = sync_wallpapers(wallpapers_dir_path, wallpapers);
-        let states: Vec<(String, usize)> = wallpapers
-            .iter()
-            .map(|wallpaper| (wallpaper.file_name.to_owned(), wallpaper.count))
-            .collect();
-        let max_len = states.iter().map(|(name, _)| name.len()).max().unwrap();
-        for (name, count) in states {
-            println!("{:<max_len$}: {count}", name);
-        }
-        return;
-    }
 
     let mut wallpapers_state_path = wallpapers_dir_path.clone();
     wallpapers_state_path.push("state.bin");

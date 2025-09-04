@@ -135,7 +135,7 @@ pub fn sync_wallpapers(
     wallpaper_dir_path: &std::path::Path,
     mut wallpapers: Vec<Wallpaper>,
 ) -> Vec<Wallpaper> {
-    let wallpapers_names = get_wallpapers_from_path(wallpaper_dir_path);
+    let wallpapers_names = get_wallpapers_paths_from_path(wallpaper_dir_path);
 
     let old_wallpapers_names: Vec<&String> = wallpapers
         .iter()
@@ -184,7 +184,36 @@ pub fn mean_centering_counts(mut wallpapers: Vec<Wallpaper>) -> Vec<Wallpaper> {
     wallpapers
 }
 
-pub fn get_wallpapers_from_path(wallpaper_dir_path: &std::path::Path) -> Vec<String> {
+pub fn find_wallpaper_path(options: &Vec<Option>) -> std::option::Option<&std::path::PathBuf> {
+    let wallpapers_dir_path = options.iter().find_map(|option| match option {
+        Option::Path(path) => Some(path),
+        _ => None,
+    });
+
+    wallpapers_dir_path
+}
+
+pub fn retrieve_wallpapers(path: &std::path::PathBuf) -> Vec<Wallpaper> {
+    let mut wallpapers_state_path = path.clone();
+    wallpapers_state_path.push("state.bin");
+    let wallpapers: Vec<Wallpaper> = if let Ok(state) = std::fs::read(&wallpapers_state_path) {
+        println!("Using previous state");
+        serde_binary::from_vec(state, serde_binary::binary_stream::Endian::Little).unwrap()
+    } else {
+        let wallpapers_paths = get_wallpapers_paths_from_path(path);
+        let wallpapers = wallpapers_paths
+            .into_iter()
+            .map(|wallpaper_path| Wallpaper {
+                file_name: wallpaper_path,
+                count: 0,
+            });
+        wallpapers.collect()
+    };
+
+    wallpapers
+}
+
+pub fn get_wallpapers_paths_from_path(wallpaper_dir_path: &std::path::Path) -> Vec<String> {
     let wallpapers = wallpaper_dir_path.read_dir().unwrap();
     let wallpapers = wallpapers.filter_map(|dir_entry| dir_entry.ok());
     let wallpapers =

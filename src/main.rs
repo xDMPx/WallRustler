@@ -4,8 +4,8 @@
 use std::env;
 use wallrustler::wallpaper::WallSetter;
 use wallrustler::{
-    get_wallpapers_from_path, mean_centering_counts, pick_random_wallpaper, print_help,
-    process_args, sync_wallpapers, Error, Option, Wallpaper,
+    find_wallpaper_path, mean_centering_counts, pick_random_wallpaper, print_help, process_args,
+    retrieve_wallpapers, sync_wallpapers, Error, Option,
 };
 
 #[cfg(target_os = "linux")]
@@ -55,13 +55,7 @@ fn main() {
         wall_setter.set_program(*p);
     }
 
-    let wallpapers_dir_path = options
-        .iter()
-        .find_map(|option| match option {
-            Option::Path(path) => Some(path),
-            _ => None,
-        })
-        .unwrap();
+    let wallpapers_dir_path = find_wallpaper_path(&options).unwrap();
 
     if !wall_setter.is_running() {
         wall_setter.init();
@@ -71,22 +65,8 @@ fn main() {
         wall_setter.init();
     }
 
-    let mut wallpapers_state_path = wallpapers_dir_path.clone();
-    wallpapers_state_path.push("state.bin");
-
-    let mut wallpapers: Vec<Wallpaper> = if let Ok(state) = std::fs::read(&wallpapers_state_path) {
-        println!("Using previous state");
-        serde_binary::from_vec(state, serde_binary::binary_stream::Endian::Little).unwrap()
-    } else {
-        let wallpapers_paths = get_wallpapers_from_path(wallpapers_dir_path);
-        let wallpapers = wallpapers_paths
-            .into_iter()
-            .map(|wallpaper_path| Wallpaper {
-                file_name: wallpaper_path,
-                count: 0,
-            });
-        wallpapers.collect()
-    };
+    let mut wallpapers = retrieve_wallpapers(wallpapers_dir_path);
+    wallpapers = sync_wallpapers(wallpapers_dir_path, wallpapers);
 
     if options.contains(&Option::PrintState) {
         wallpapers = sync_wallpapers(wallpapers_dir_path, wallpapers);
@@ -101,6 +81,8 @@ fn main() {
         return;
     }
 
+    let mut wallpapers_state_path = wallpapers_dir_path.clone();
+    wallpapers_state_path.push("state.bin");
     loop {
         wallpapers = sync_wallpapers(wallpapers_dir_path, wallpapers);
         wallpapers = mean_centering_counts(wallpapers);

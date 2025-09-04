@@ -28,8 +28,6 @@ pub enum Option {
     PrintHelp,
     Interval(u64),
     #[cfg(target_os = "linux")]
-    RestartSWWW,
-    #[cfg(target_os = "linux")]
     Program(WallSetterProgram),
 }
 
@@ -66,8 +64,6 @@ pub fn process_args() -> Result<Vec<Option>, Error> {
                 }
             }
             #[cfg(target_os = "linux")]
-            "--restart-swww" => Ok(Option::RestartSWWW),
-            #[cfg(target_os = "linux")]
             s if s.starts_with("--program=") => {
                 if s.ends_with("swww") {
                     Ok(Option::Program(WallSetterProgram::SWWW))
@@ -99,7 +95,6 @@ pub fn print_help() {
     println!("Options:");
     println!("\t --help");
     println!("\t --interval=<u64>");
-    println!("\t --restart-swww\t\t\t\tMight resolve the issue with out-of-sync and overlapping animations/wallpapers");
     #[cfg(not(all(feature = "hyprpaper", target_os = "linux")))]
     println!("\t --program=<swww|plasma-apply-wallpaperimage>");
     #[cfg(all(feature = "hyprpaper", target_os = "linux"))]

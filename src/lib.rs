@@ -34,6 +34,7 @@ pub enum Option {
 #[derive(Debug)]
 pub enum Error {
     InvalidOption(String),
+    UnavailableOption(String),
     InvalidOptionsStructure,
 }
 
@@ -73,13 +74,29 @@ pub fn process_args() -> Result<Vec<Option>, Error> {
                 if s.ends_with("swww") {
                     Ok(Option::Program(WallSetterProgram::SWWW))
                 } else if s.ends_with("plasma-apply-wallpaperimage") {
-                    Ok(Option::Program(WallSetterProgram::PLASMA))
+                    if let Ok(val) = std::env::var("XDG_CURRENT_DESKTOP") {
+                        if val == "KDE" {
+                            Ok(Option::Program(WallSetterProgram::PLASMA))
+                        } else {
+                            Err(Error::UnavailableOption(
+                                "plasma-apply-wallpaperimage".to_owned(),
+                            ))
+                        }
+                    } else {
+                        Err(Error::UnavailableOption(
+                            "plasma-apply-wallpaperimage".to_owned(),
+                        ))
+                    }
                 } else if s.ends_with("hyprpaper") {
                     #[allow(unused_mut, unused_assignments)]
                     let mut option = Err(Error::InvalidOption(arg));
                     #[cfg(all(feature = "hyprpaper", target_os = "linux"))]
                     {
-                        option = Ok(Option::Program(WallSetterProgram::HYPRPAPER));
+                        if let Ok(_) = std::env::var("HYPRLAND_INSTANCE_SIGNATURE") {
+                            option = Ok(Option::Program(WallSetterProgram::HYPRPAPER));
+                        } else {
+                            option = Err(Error::UnavailableOption("hyprpaper".to_owned()))
+                        }
                     }
                     option
                 } else {

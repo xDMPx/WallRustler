@@ -22,6 +22,9 @@ fn main() {
             match err {
                 Error::InvalidOption(option) => eprintln!("Provided option {option} is invalid"),
                 Error::InvalidOptionsStructure => eprintln!("Invalid input"),
+                Error::UnavailableOption(program) => {
+                    eprintln!("Program {program} is unavalible due to current envirioment")
+                }
             }
             print_help();
             std::process::exit(-1);

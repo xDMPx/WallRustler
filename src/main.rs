@@ -56,7 +56,15 @@ fn main() {
 
     #[cfg(target_os = "linux")]
     if let Ok(val) = env::var("XDG_CURRENT_DESKTOP") {
-        if val == "KDE" {
+        if val == "KDE"
+            && options
+                .iter()
+                .find(|o| match o {
+                    Option::Program(_) => true,
+                    _ => false,
+                })
+                .is_none()
+        {
             println!("KDE detected, switching to plasma-apply-wallpaperimage as wallpaper setting program\nThis behavior can be changed by using --program option");
             wall_setter.set_program(WallSetterProgram::PLASMA);
         }

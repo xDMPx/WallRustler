@@ -102,7 +102,9 @@ impl WallSetter {
 
         match &self.program {
             WallSetterProgram::SWWW => {
-                self.kill_swww_daemon()?;
+                if Self::is_swww_daemon_running()? {
+                    self.kill_swww_daemon()?;
+                }
             }
             WallSetterProgram::PLASMA => {}
             #[cfg(feature = "hyprpaper")]

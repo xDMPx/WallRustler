@@ -96,6 +96,10 @@ impl WallSetter {
             ));
         }
 
+        if Self::is_swww_daemon_running()? {
+            self.kill_swww_daemon()?;
+        }
+
         match &self.program {
             WallSetterProgram::SWWW => {
                 self.kill_swww_daemon()?;
@@ -133,16 +137,26 @@ impl WallSetter {
     }
 
     fn swww_init(&mut self) -> Result<(), std::io::Error> {
-        let output = std::process::Command::new("pgrep")
-            .arg("-f")
-            .arg("swww")
-            .output()?;
+        let running = Self::is_swww_daemon_running()?;
 
-        if !output.status.success() {
+        if !running {
             self.swww_daemon_init()?;
         }
 
         Ok(())
+    }
+
+    fn is_swww_daemon_running() -> Result<bool, std::io::Error> {
+        let output = std::process::Command::new("pgrep")
+            .arg("-f")
+            .arg("swww-daemon")
+            .output()?;
+
+        if output.status.success() {
+            Ok(true)
+        } else {
+            Ok(false)
+        }
     }
 
     fn swww_daemon_init(&mut self) -> Result<(), std::io::Error> {

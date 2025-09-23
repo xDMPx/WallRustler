@@ -1,5 +1,3 @@
-#![windows_subsystem = "windows"]
-
 #[allow(unused_imports)]
 use std::env;
 use wallrustler::wallpaper::WallSetter;
@@ -48,6 +46,10 @@ fn main() {
             println!("{:<max_len$}: {count}", name);
         }
         return;
+    }
+    #[cfg(target_os = "windows")]
+    if options.contains(&Option::HideTerminalWindow) {
+        wall_setter.enable_hide_terminal_window();
     }
 
     if let Some(m) = options.iter().find_map(|o| match o {

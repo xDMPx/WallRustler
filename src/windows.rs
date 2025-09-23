@@ -1,14 +1,44 @@
 use core::ffi::c_void;
 use std::os::windows::ffi::OsStrExt;
+use std::thread::sleep;
+use std::time::Duration;
+use windows_sys::Win32::Foundation::HWND;
+use windows_sys::Win32::System::Console::GetConsoleWindow;
+use windows_sys::Win32::UI::WindowsAndMessaging::{GetWindow, ShowWindow, GW_OWNER, SW_HIDE};
 
-pub struct WallSetter {}
+pub struct WallSetter {
+    hidden: bool,
+}
 
 impl WallSetter {
     pub fn new() -> WallSetter {
-        WallSetter {}
+        WallSetter { hidden: false }
     }
 
-    pub fn init(&self) {}
+    pub fn enable_hide_terminal_window(&mut self) {
+        self.hidden = true;
+    }
+
+    pub fn init(&self) {
+        if self.hidden {
+            unsafe {
+                // Based on: https://stackoverflow.com/a/78943791
+                let hwnd: HWND = GetConsoleWindow();
+                if hwnd == std::ptr::null_mut() {
+                    return;
+                }
+                sleep(Duration::from_millis(200));
+                let owner: HWND = GetWindow(hwnd, GW_OWNER);
+                if owner == std::ptr::null_mut() {
+                    // Windows 10/Console Host: hide the console window itself
+                    ShowWindow(hwnd, SW_HIDE);
+                } else {
+                    // Windows 11 / Windows Terminal: hide the owner window
+                    ShowWindow(owner, SW_HIDE);
+                }
+            }
+        }
+    }
 
     pub fn set_wallpaper(&self, wallpaper: &std::path::Path) -> Result<(), std::io::Error> {
         self.set_wallpaper_windows(wallpaper)

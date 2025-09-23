@@ -29,6 +29,8 @@ pub enum Option {
     Interval(u64),
     #[cfg(target_os = "linux")]
     Program(WallSetterProgram),
+    #[cfg(target_os = "windows")]
+    HideTerminalWindow,
 }
 
 #[derive(Debug)]
@@ -103,6 +105,8 @@ pub fn process_args() -> Result<Vec<Option>, Error> {
                     Err(Error::InvalidOption(arg))
                 }
             }
+            #[cfg(target_os = "windows")]
+            "--hidden" => Ok(Option::HideTerminalWindow),
             _ => Err(Error::InvalidOption(arg)),
         };
         options.push(arg?);
@@ -118,6 +122,8 @@ pub fn print_help() {
     println!("Options:");
     println!("\t --help");
     println!("\t --interval=<u64>");
+    #[cfg(target_os = "windows")]
+    println!("\t --hidden");
     #[cfg(not(all(feature = "hyprpaper", target_os = "linux")))]
     println!("\t --program=<swww|plasma-apply-wallpaperimage>");
     #[cfg(all(feature = "hyprpaper", target_os = "linux"))]
